@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Matúško Kombat XII</title>
+<style>
+  :root { --bg: #000; --pad: rgba(255, 255, 255, 0.16); --pad-on: rgba(255, 200, 40, 0.55); --pad-text: #fff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; }
+  body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
+  canvas { display: block; width: min(100vw, 177.78vh); height: min(56.25vw, 100vh);
+           image-rendering: pixelated; image-rendering: crisp-edges; background: var(--bg); }
+  #touch { position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
+  #touch[hidden] { display: none; }
+  #touch button { pointer-events: auto; position: absolute; border: 2px solid rgba(255,255,255,0.35);
+                  background: var(--pad); color: var(--pad-text); font: 700 13px system-ui, sans-serif;
+                  border-radius: 50%; width: 56px; height: 56px; padding: 0; -webkit-tap-highlight-color: transparent; }
+  #touch button.on { background: var(--pad-on); }
+  #stick { pointer-events: auto; position: absolute; left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 150px; height: 150px;
+           border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.10); touch-action: none; }
+  #stick .mk { position: absolute; color: rgba(255, 255, 255, 0.55); font: 700 12px system-ui, sans-serif; }
+  #stick .up { top: 6px; left: 50%; transform: translateX(-50%); } #stick .dn { bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 10px; }
+  #stick .lt { left: 8px; top: 50%; transform: translateY(-50%); } #stick .rt { right: 8px; top: 50%; transform: translateY(-50%); }
+  #knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+          background: rgba(255, 194, 26, 0.45); border: 2px solid rgba(255, 255, 255, 0.55); pointer-events: none; }
+  #touch [data-b="punch"] { right: 128px; bottom: 70px; }
+  #touch [data-b="kick"]  { right: 70px;  bottom: 14px; }
+  #touch [data-b="kiai"]  { right: 70px;  bottom: 126px; }
+  #touch [data-b="special"] { right: 12px; bottom: 70px; font-size: 22px; }
+  #touch [data-b="start"] { left: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); width: 64px; height: 28px; border-radius: 14px; font-size: 10px; opacity: 0.8; }
+  #musicBtn { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); right: 12px; width: 36px; height: 36px; border-radius: 50%;
+              border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); color: #ffd200; font: 700 18px system-ui, sans-serif; cursor: pointer; padding: 0; }
+  #musicBtn.off { color: #777; text-decoration: line-through; }
+  #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+            color: #ffd200; background: #000; font: 700 20px system-ui, sans-serif; padding: 24px; }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="assets/ui/icon192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+<body>
+<canvas id="game" width="480" height="270"></canvas>
+<div id="touch" hidden>
+  <div id="stick" aria-label="Pohyb, skok a blok"><span class="mk up">▲</span><span class="mk lt">◀</span><span class="mk rt">▶</span><span class="mk dn">BLOK</span><div id="knob"></div></div>
+  <button data-b="punch">ÚDER</button><button data-b="kick">KOP</button><button data-b="kiai">KIAI</button><button data-b="special">♪</button>
+  <button data-b="start">START</button>
+</div>
+<button id="musicBtn" type="button" tabindex="-1" aria-label="Hudba zapnúť alebo vypnúť" aria-pressed="true">♫</button>
+<div id="rotate">Otoč telefón na šírku 🔄</div>
+<script src="assets/manifest.js"></script>
+<script src="game.js"></script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>
