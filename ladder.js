@@ -537,7 +537,7 @@
         }
         applyUnlocks();
       }
-      if (sc === 'select') onSelect();
+      if (sc === 'select' && !(api.NET && api.NET.role)) onSelect();          // kódy a HORA len pre hru na jednom zariadení
       if (sc === 'vs' && pendingKind && game.forceStage) {            // VS ukazuje arénu súpera, nie náhodnú
         const i = STAGES.findIndex(s => s.id === game.forceStage); if (i >= 0) game.stageSel = i;
       }

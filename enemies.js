@@ -331,6 +331,7 @@
       }
     }
     hooks.frame.push(() => {
+      if (api.NET && api.NET.role === 'guest') return;            // sieťový hosť len kreslí stav od hostiteľa
       const F = fight(); if (!F || api.scene !== 'fight' || F.paused) return;
       const en = ST(F);
       for (const f of F.fighters) {
@@ -397,9 +398,9 @@
           break;
         case 'boss':
           // nové pohyby z moves.js (letiaci kop, kombá) ťahajú počítač k súperovi → schopnosti bossa aj na kratšiu vzdialenosť
-          if (!busy && ok('lightning') && d >= 90 && chance(0.7 * lv)) return 'lightning';
+          if (!busy && ok('lightning') && d >= 70 && chance(0.75 * lv)) return 'lightning';
           if (!busy && ok('torpedo') && d >= 90 && d <= 330 && o.onGround && !o.attacking && chance(0.5 * lv)) return 'torpedo';
-          if (ok('warp') && (d >= 130 || (d < 70 && chance(0.4))) && chance(0.3 * lv)) return 'warp';
+          if (ok('warp') && (d >= 130 || (d < 60 && chance(0.25))) && chance(0.3 * lv)) return 'warp';
           break;
       }
       return null;
@@ -611,6 +612,16 @@
     // pre ladder.js a testy
     api.enemies = {
       ids: Object.keys(DEFS), sprites: SP, moves: Object.keys(CD),
+      help: [   // [pohyb, klávesnica P1, klávesnica P2, ovládač PS, dotyk] — ako api.moves.help (OVLÁDANIE, COMBOS.md)
+        ['LANO (OHNIVÝ NINJA)', 'VZAD VPRED F', 'VZAD VPRED K', '◀ ▶ □', 'vzad, vpred + ÚDER'],
+        ['OHNIVÝ KOP', 'S VPRED G', '↓ VPRED L', '↓ ▶ ✕', 'dole, vpred + KOP'],
+        ['ĽADOVÁ GUĽA (ĽADOVÝ)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'dole, vpred + ÚDER'],
+        ['ŠMYK (ĽADOVÝ)', 'VZAD + F + G', 'VZAD + K + L', '◀ + □ + ✕', 'vzad + ÚDER + KOP'],
+        ['NEVIDITEĽNOSŤ (TIEŇOVÝ)', 'W W S R', '↑ ↑ ↓ I', '▲ ▲ ▼ ○', 'hore, hore, dole + KIAI'],
+        ['BLESK (MAJSTER MRAK)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'dole, vpred + ÚDER'],
+        ['TELEPORT (MRAK)', 'S W', '↓ ↑', '▼ ▲', 'dole, hore'],
+        ['TORPÉDO (MRAK)', 'VZAD VZAD VPRED', 'VZAD VZAD VPRED', '◀ ◀ ▶', 'vzad, vzad, vpred'],
+      ],
       force(f, mv, ignoreCd = false) {   // spustí schopnosť (test, scény); bez cooldownu, ak ignoreCd
         const F = fight(); if (!F) return false;
         if (ignoreCd) { f.cd.special = 0; f.enCd = {}; }

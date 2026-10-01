@@ -18,6 +18,7 @@
       try { if (L.conn) L.conn.close(); } catch (e) { /* už zavreté */ }
       try { if (L.peer) L.peer.destroy(); } catch (e) { /* už zničené */ }
       L.conn = null; L.peer = null;
+      restoreOrder();
     }
     function fail(msg) { cleanup(); L.mode = 'error'; L.msg = msg; }
     function lost() {
@@ -85,7 +86,7 @@
     }
     function pack() {
       const F = api.fight, g = api.game;
-      const snap = { sc: api.scene, st: api.sceneT,
+      const snap = { sc: api.scene, st: api.sceneT, o: api.ORDER.slice(),     // o = poradie postáv hostiteľa (odomknuté postavy má každý zariadenie inak)
         g: { mode: g.mode, picks: g.picks, cursor: g.cursor, locked: g.locked, stageSel: g.stageSel, lastWinner: g.lastWinner,
              score: g.score, menuIdx: g.menuIdx, rockyMsg: g.rockyMsg, msg: g.msg, msgT: g.msgT } };
       if (F && ['vs', 'fight', 'eject', 'result'].includes(api.scene)) {
@@ -130,12 +131,22 @@
         if (e[0] === 's') api.sfx(e[1], e[2]); else if (e[0] === 'v') api.say(e[1]); else if (e[0] === 'm') api.music(e[1]);
       }
     }
+    function syncOrder(o) {                 // hosť vidí výber s postavami hostiteľa; vlastné sa mu vrátia po hre (restoreOrder)
+      if (!L.ownOrder) L.ownOrder = api.ORDER.slice();
+      const ids = o.filter(id => api.ROSTER[id]);
+      if (ids.join() !== api.ORDER.join()) { api.ORDER.length = 0; api.ORDER.push(...ids); }
+    }
+    function restoreOrder() {
+      if (!L.ownOrder) return;
+      api.ORDER.length = 0; api.ORDER.push(...L.ownOrder); L.ownOrder = null;
+    }
     function onGuestData(d) {
       L.lastRx = api.frame;
       if (!d) return;
       if (d.t === 'e') return playEvents(d.e);
       if (d.t !== 's') return;
       const s = d.s;
+      if (s.o) syncOrder(s.o);
       Object.assign(api.game, s.g);
       if (s.F) {
         const F = s.F;

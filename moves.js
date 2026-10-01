@@ -197,7 +197,7 @@
 
     // ------------------------------------------------------------------ každý snímok: kombo hráčov (počas úderu game.js háčik nevolá)
     api.hooks.frame.push(() => {
-      if (api.scene !== 'fight') return;
+      if (api.scene !== 'fight' || (api.NET && api.NET.role === 'guest')) return;   // sieťový hosť nesimuluje
       const F = api.fight; if (!F || F.paused) return;
       for (const f of F.fighters) {
         if (f.mvFlip) { f.mvFlip = false; f.facing = -f.facing; }         // poistka ku kresleniu tornáda

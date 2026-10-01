@@ -165,7 +165,7 @@ const SAY_TEXT = {
   finish: 'Finish him!', matusko_wins: 'Matúško wins!', simon_wins: 'Šimon wins!', flawless: 'Flawless victory!',
   rockyality: 'Rockyality!', babality: 'Babality!', folklority: 'Folklority!', friendship: 'Friendship... friendship?',
   birthday: 'Všetko najlepšie k dvanástym narodeninám, Matúško!', draw: 'Draw!',
-  ssj_matusko: 'Super Matúško!', ssj_simon: 'Super Šimon!', creeperality: 'Creeperality!', moreality: 'Moreality!',
+  ssj_matusko: 'Super Matúško!', ssj_simon: 'Super Šimon!', creeperality: 'Creeperality!', moreality: 'Moreality!', destiny: 'Choose your destiny!',
 };
 function sayText(key) {                     // nové postavy z modulov: „<id>_wins“ / „ssj_<id>“ podľa mena v ROSTER
   if (SAY_TEXT[key]) return SAY_TEXT[key];
@@ -1085,7 +1085,7 @@ function drawBaby(f) {
   if (f.t % 40 < 26) text('BUÁÁÁ!', x, y - 84, 10, 'center', '#7fc8ff');
 }
 function drawStars(f) {
-  const cx = f.x, cy = f.y - 146;
+  const cx = f.x, cy = f.y - Math.round((f.def.height || 140) * (f.def.scale || 1) + 6);   // nad hlavou aj pri bossovi či Rockym
   for (let i = 0; i < 3; i++) {
     const a = f.t / 9 + i * Math.PI * 2 / 3, x = cx + Math.cos(a) * 14, y = cy + Math.sin(a) * 4;
     ctx.fillStyle = '#ffe23a'; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 3, 3, 7); ctx.fillRect(Math.round(x) - 3, Math.round(y) - 1, 7, 3);
@@ -1213,7 +1213,7 @@ function drawHUD() {
     ctx.fillStyle = '#2fbf3a'; right ? ctx.fillRect(x + 190 - w, 10, w, 12) : ctx.fillRect(x, 10, w, 12);
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; right ? ctx.fillRect(x + 190 - w, 10, w, 3) : ctx.fillRect(x, 10, w, 3);
     text(f.def.name, right ? x + 186 : x + 4, 20, 9, right ? 'right' : 'left', '#ffe066');
-    const meters = [[keyHint(f.side, 'kiai') + 'KIAI', 1 - f.cd.kiai / KIAI_CD, '#ff9f1a'], [keyHint(f.side, 'special') + f.def.specialName, 1 - f.cd.special / SPECIAL_CD, '#7dfcff']];
+    const meters = [[keyHint(f.side, 'kiai') + (f.def.kiaiName || 'KIAI'), 1 - f.cd.kiai / KIAI_CD, '#ff9f1a'], [keyHint(f.side, 'special') + f.def.specialName, 1 - f.cd.special / SPECIAL_CD, '#7dfcff']];
     meters.forEach(([lbl, v, col], i) => {
       const mx = right ? x + 190 - 60 - i * 66 : x + i * 66, my = 27;
       ctx.fillStyle = '#000'; ctx.fillRect(mx - 1, my - 1, 62, 6);
@@ -1264,7 +1264,7 @@ function drawFight() {
   }
   if (F.phase === 'finish') {
     const w = F.fighters[F.winner];
-    if (!(w.ctl instanceof CPU) && F.t > 40 && F.t % 60 < 45) {
+    if (!hooks.finisher.length && !(w.ctl instanceof CPU) && F.t > 40 && F.t % 60 < 45) {   // bez finishers.js platia staré jednotlačidlové zakončenia
       text('KIAI = ROCKYALITY   ŠPECIÁL = ' + w.def.finisher.toUpperCase() + '   KOP = CREEPERALITY   ÚDER = FRIENDSHIP', W / 2, 250, 8, 'center', '#fff');
     }
   }
@@ -1291,7 +1291,11 @@ MENU.push(
   { label: 'OVLÁDANIE', act() { setScene('controls'); } },
   { label: () => musicOn ? 'HUDBA: ZAP' : 'HUDBA: VYP', act() { toggleMusic(); } },
 );
-function menuLayout() { const n = MENU.length, step = n > 4 ? Math.max(10, Math.floor(60 / n)) : 15; return { y0: n > 4 ? 196 : 202, step }; }
+function menuLayout() {                  // pri 6+ položkách sa znak a nápis posunú vyššie (drawTitle) a menu má viac miesta
+  const n = MENU.length;
+  if (n > 5) return { y0: 174, step: 12, compact: true };
+  return { y0: n > 4 ? 196 : 202, step: n > 4 ? Math.max(10, Math.floor(60 / n)) : 15 };
+}
 function updateTitle() {
   const n = MENU.length, L = menuLayout();
   if (menu.tapPos) {
@@ -1306,15 +1310,15 @@ function updateTitle() {
 function drawTitle() {
   const g = ctx.createRadialGradient(W / 2, 110, 10, W / 2, 110, 300);
   g.addColorStop(0, '#5a0d0d'); g.addColorStop(1, '#0a0000'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  const em = IMG['img/emblem'];
-  if (em) { const s = 120 / em.height; ctx.globalAlpha = 0.9; ctx.drawImage(em, W / 2 - em.width * s / 2, 8, em.width * s, 120); ctx.globalAlpha = 1; }
+  const em = IMG['img/emblem'], compact = menuLayout().compact, eh = compact ? 94 : 120;
+  if (em) { const s = eh / em.height; ctx.globalAlpha = 0.9; ctx.drawImage(em, W / 2 - em.width * s / 2, compact ? 4 : 8, em.width * s, eh); ctx.globalAlpha = 1; }
   else {
     ctx.strokeStyle = '#c99a2e'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(W / 2, 64, 50, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = '#7a5a12'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(W / 2, 64, 42, 0, Math.PI * 2); ctx.stroke();
     drawRocky({ x: W / 2 - 4, y: 94, dir: 1, state: 'sit', t: sceneT });
   }
-  bigText('MATÚŠKO KOMBAT', W / 2, 150, 42);
-  bigText('XII', W / 2, 186, 34, true);
+  bigText('MATÚŠKO KOMBAT', W / 2, compact ? 124 : 150, compact ? 38 : 42);
+  bigText('XII', W / 2, compact ? 156 : 186, compact ? 28 : 34, true);
   const L = menuLayout(), fs = MENU.length > 4 ? 10 : 11;
   MENU.forEach((it, i) => { const lb = typeof it.label === 'function' ? it.label() : it.label;
     text((i === game.menuIdx ? '▶ ' : '  ') + lb, W / 2 - 44, L.y0 + i * L.step, fs, 'left', i === game.menuIdx ? '#ffd200' : '#bbb'); });
@@ -1322,28 +1326,36 @@ function drawTitle() {
   else if (!audioUnlocked && (padUsed || sceneT > 240)) text('ZVUK: klikni myšou alebo stlač kláves', W / 2, 264, 9, 'center', '#9fd8ff');
   else if (sceneT % 60 < 40) text('Všetko najlepšie k 12. narodeninám, Matúško!', W / 2, 264, 9, 'center', '#ffb3b3');
 }
-function controlPages() { return api.moves && api.moves.help ? 2 : 1; }
+function controlPages() {                  // 1. strana základ, ďalšie z pomocníkov modulov ([pohyb, P1, P2, PS, dotyk])
+  const pages = [{ title: 'OVLÁDANIE' }];
+  if (api.moves && api.moves.help) pages.push({ title: 'ŠPECIÁLNE ÚDERY', rows: api.moves.help });
+  const secret = [api.glitch, api.vodnik, api.rocky].filter(m => m && m.help).flatMap(m => m.help);
+  if (secret.length) pages.push({ title: 'TAJNÉ POSTAVY', rows: secret });
+  if (api.enemies && api.enemies.help) pages.push({ title: 'SÚPERI Z HORY', rows: api.enemies.help });
+  return pages;
+}
 function updateControls() {
   if (sceneT === 1) game.controlsPage = 0;
-  const n = controlPages();
+  const n = controlPages().length;
   if ((menu.left || menu.right) && n > 1) { game.controlsPage = ((game.controlsPage || 0) + (menu.right ? 1 : n - 1)) % n; sfx('select'); }
   else if (menu.tapPos && n > 1 && (game.controlsPage || 0) < n - 1) { game.controlsPage = (game.controlsPage || 0) + 1; sfx('select'); }   // ťuk = ďalšia strana
   else if ((menu.ok || menu.back) && sceneT > 10) { sfx('confirm'); setScene('title'); }
 }
 function drawControls() {
   ctx.fillStyle = '#0b0b14'; ctx.fillRect(0, 0, W, H);
-  const page = game.controlsPage || 0, n = controlPages();
-  if (page === 0) {
+  const pages = controlPages(), n = pages.length, page = Math.min(game.controlsPage || 0, n - 1), pg = pages[page];
+  if (!pg.rows) {
     bigText('OVLÁDANIE', W / 2, 34, 26);
     const rows = [['', 'HRÁČ 1', 'HRÁČ 2', 'OVLÁDAČ PS'], ['pohyb', 'A / D', '← / →', 'páčka / šípky'], ['skok', 'W', '↑', 'hore'],
       ['blok', 'S', '↓', 'L1 / R1'], ['úder', 'F', 'K', '□'], ['kop', 'G', 'L', '✕'], ['KIAI', 'R', 'I', '○'], ['špeciál', 'T', 'O', '△']];
     rows.forEach((r, i) => r.forEach((c, j) => text(c, [70, 170, 270, 380][j], 64 + i * 18, 10, 'center', i === 0 ? '#ffd200' : '#fff')));
     text('FINISH HIM: tajné kombá — objavené nájdeš v menu KNIHA KOMB', W / 2, 218, 8, 'center', '#ff9f9f');
   } else {
-    bigText('ŠPECIÁLNE ÚDERY', W / 2, 34, 22);
-    const rows = [['', 'HRÁČ 1', 'HRÁČ 2', 'OVLÁDAČ PS'], ...api.moves.help.map(r => [r[0], r[1], r[2], r[3]])];
-    rows.forEach((r, i) => r.forEach((c, j) => text(c, [86, 205, 300, 400][j], 64 + i * 20, 9, 'center', i === 0 ? '#ffd200' : j === 0 ? '#9fd8ff' : '#fff')));
-    text('VPRED = smerom k súperovi    S / ↓ / L1 = dole    mobil: páčka + tlačidlá', W / 2, 210, 8, 'center', '#cfe6ff');
+    bigText(pg.title, W / 2, 34, 22);
+    const rows = [['', 'HRÁČ 1', 'HRÁČ 2', 'OVLÁDAČ PS'], ...pg.rows.map(r => [r[0], r[1], r[2], r[3]])];
+    const step = Math.min(20, Math.floor(150 / rows.length)), fs = rows.length > 8 ? 8 : 9;
+    rows.forEach((r, i) => r.forEach((c, j) => text(c, [92, 215, 305, 405][j], 60 + i * step, fs, 'center', i === 0 ? '#ffd200' : j === 0 ? '#9fd8ff' : '#fff')));
+    text('VPRED = smerom k súperovi    S / ↓ / L1 = dole    mobil: páčka + tlačidlá', W / 2, 218, 8, 'center', '#cfe6ff');
   }
   if (n > 1) text(`◀ ▶  strana ${page + 1}/${n}`, W / 2, 234, 9, 'center', '#ffd200');
   text('ESC = pauza    M = zvuk    Enter = späť', W / 2, 252, 9, 'center', '#aaa');
@@ -1388,6 +1400,7 @@ function updateSelect() {
   if (game.mode === 1 && game.locked[0] && !game.locked[1]) {
     game.picks[1] = ORDER.find(id => id !== game.picks[0]) || game.picks[0]; game.locked[1] = true;
   }
+  if (sceneT === 12 && !NET.role) say('destiny');                    // „Choose your destiny!“ ako v MK
   if (typed.join('').endsWith('ROCKY')) { typed.length = 0; sfx('bark'); game.rockyMsg = 120; }
   if (game.rockyMsg > 0) game.rockyMsg--;
   if (menu.back) setScene('title');

@@ -153,12 +153,14 @@
         api.drawFigure(x - px * 0.35, 230 - jump + bob, i % 2 ? -1 : 1, api.POSES.stand,
           { gi, giDark: dark, belt: '#ede4c6', hair: '#5c3c2f' }, { scale: 0.45 });
       }
-      // Rocky oddychuje pri plote a vrtí chvostom.
+      // Rocky oddychuje pri plote a vrtí chvostom (nie keď sám bojuje).
+      if (!F.fighters.some(f => f.id === 'rocky')) {
       ctx.fillStyle = '#b98754'; ctx.beginPath(); ctx.ellipse(420 - px * 0.2, 226, 19, 8, 0, 0, Math.PI * 2); ctx.fill();
       circle('#c99860', 404 - px * 0.2, 221, 7);
       ctx.strokeStyle = '#b98754'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(436 - px * 0.2, 222);
       ctx.lineTo(445 - px * 0.2, 215 + Math.sin(t / 9) * 5); ctx.stroke();
       circle('#3f3027', 400 - px * 0.2, 221, 1.5);
+      }
       for (let i = 0; i < 5; i++) {
         const x = periodX(i * 111, 0.32 + i * 0.04) - px * 0.3;
         const y = 153 + Math.sin(t / 14 + i * 4) * 14;
