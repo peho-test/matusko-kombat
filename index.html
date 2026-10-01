@@ -50,7 +50,17 @@
 <button id="musicBtn" type="button" tabindex="-1" aria-label="Hudba zapnúť alebo vypnúť" aria-pressed="true">♫</button>
 <div id="rotate">Otoč telefón na šírku 🔄</div>
 <script src="assets/manifest.js"></script>
+<script src="peerjs.min.js"></script>
+<script src="net.js"></script>
+<script src="moves.js"></script>
+<script src="finishers.js"></script>
+<script src="stages.js"></script>
+<script src="enemies.js"></script>
+<script src="glitch.js"></script>
+<script src="vodnik.js"></script>
+<script src="rocky.js"></script>
+<script src="ladder.js"></script>
 <script src="game.js"></script>
-<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { const had = !!navigator.serviceWorker.controller; let done = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (done || !had) return; done = true; const sc = window.__MK && __MK.scene; if (!sc || sc === 'title' || sc === 'intro') location.reload(); }); navigator.serviceWorker.register('sw.js').catch(() => {}); }</script>
 </body>
 </html>
