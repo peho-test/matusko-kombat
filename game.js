@@ -165,7 +165,7 @@ const SAY_TEXT = {
   finish: 'Finish him!', matusko_wins: 'Matúško wins!', simon_wins: 'Šimon wins!', flawless: 'Flawless victory!',
   rockyality: 'Rockyality!', babality: 'Babality!', folklority: 'Folklority!', friendship: 'Friendship... friendship?',
   birthday: 'Všetko najlepšie k dvanástym narodeninám, Matúško!', draw: 'Draw!',
-  ssj_matusko: 'Super Matúško!', ssj_simon: 'Super Šimon!', creeperality: 'Creeperality!', moreality: 'Moreality!', destiny: 'Choose your destiny!',
+  ssj_matusko: 'Super Matúško!', ssj_simon: 'Super Šimon!', creeperality: 'Creeperality!', moreality: 'Moreality!', destiny: 'Choose your destiny!', futbality: 'Futbality!', goal: 'Goooal!',
 };
 function sayText(key) {                     // nové postavy z modulov: „<id>_wins“ / „ssj_<id>“ podľa mena v ROSTER
   if (SAY_TEXT[key]) return SAY_TEXT[key];
