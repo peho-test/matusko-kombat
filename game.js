@@ -1245,8 +1245,13 @@ function drawKrojHat(f) {
 }
 function drawBaby(f) {
   const x = Math.round(f.x), y = f.y, bounce = Math.abs(Math.sin(f.t / 8)) * 4;
-  const im = IMG[`img/baby_${f.id}`];
-  if (im) { ctx.drawImage(im, Math.round(x - im.width / 2), Math.round(y - im.height - bounce)); }
+  const src = IMG[`img/baby_${f.id}`] || IMG[`img/baby_${f.sid}`];
+  const im = IMG[`img/baby_${f.id}`] || (src && paletteStrip(f, 'baby', src));   // prefarbení (GOLDEN, ICE/SHADOW NINJA): bábätko predlohy vo svojich farbách
+  if (im) {                              // batoľa v oblečení postavy ako v MK2 (Peťo); obrázky z assets/ui sú 2× → kresliť polovične (ostré na PC)
+    const s = (typeof HTMLImageElement !== 'undefined' && src instanceof HTMLImageElement && src.height > 120) ? 0.5 : 1;
+    const w = Math.round(im.width * s), h = Math.round(im.height * s);
+    ctx.drawImage(im, Math.round(x - w / 2), Math.round(y - h - bounce), w, h);
+  }
   else {
     ctx.fillStyle = f.def.gi; ctx.fillRect(x - 12, y - 22 - bounce, 10, 16); ctx.fillRect(x + 2, y - 22 - bounce, 10, 16);
     ctx.fillStyle = f.def.gi; ctx.fillRect(x - 11, y - 44 - bounce, 22, 24);

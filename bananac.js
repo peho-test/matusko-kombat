@@ -307,7 +307,7 @@
       hitFrom(a, o, { name: 'bananac_peel', dmg: PEEL_DMG, blockable: false, launch: 2.6, push: 1, hitstun: 16, sound: 'slip', sx: o.x, sy: GROUND - 14 }, dir);
       B.used[gf.s].slip++;
       F.fx.push({ kind: 'p14peel', x: gf.x, y: GROUND - 6, vx: -dir * 1.6, vy: -3.6, rot: 0, vr: 0.35 * -dir, t: 0, life: 40 });
-      say(F, 'ŠMYK!', o.x, o.y - HEIGHT(o) - 24, '#ffe066', 50, 14);
+      say(F, 'SLIP!', o.x, o.y - HEIGHT(o) - 24, '#ffe066', 50, 14);
     }
     function stepGifts(F) {
       const B = st(F);

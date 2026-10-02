@@ -599,8 +599,8 @@
         ctx.save(); ctx.globalAlpha = a; api.text(tx.txt, o.x, o.y - 150 * S(o) - tx.t * 0.15, 12, 'center', tx.c); ctx.restore();
       }
     });
-    const MOVES_TXT = { fire: 'LANO: VZAD VPRED ÚDER · OHNIVÝ KOP: ↓ VPRED KOP', ice: 'ĽAD. GUĽA: ↓ VPRED ÚDER · ŠMYK: VZAD + ÚDER + KOP',
-                        shadow: 'NEVIDITEĽNOSŤ: ↑ ↑ ↓ + KIAI', boss: 'BLESK: ↓ VPRED ÚDER · TELEPORT: ↓ ↑ · TORPÉDO: VZAD VZAD VPRED' };
+    const MOVES_TXT = { fire: 'ROPE: VZAD VPRED ÚDER · FIRE KICK: ↓ VPRED KOP', ice: 'ICE BALL: ↓ VPRED ÚDER · SLIDE: VZAD + ÚDER + KOP',   // mená po anglicky (Peťo)
+                        shadow: 'INVISIBILITY: ↑ ↑ ↓ + KIAI', boss: 'LIGHTNING: ↓ VPRED ÚDER · TELEPORT: ↓ ↑ · TORPEDO: VZAD VZAD VPRED' };
     hooks.drawHud.push(F => {            // nápoveda kombá v 1. kole pre človeka, ktorý hrá za nepriateľa
       if (F.round !== 1 || !(F.phase === 'intro' || (F.phase === 'fight' && F.t < 240))) return;
       F.fighters.forEach((f, i) => {

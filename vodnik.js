@@ -148,7 +148,7 @@
       if (!has('slip')) snd('slip', 0.6);
       drops(F, o.x, GROUND - 6, 12, 2.6);
       st(F).used[pl.s].slip++;
-      say(F, 'ŠMYK!', o.x, o.y - HEIGHT(o) - 30, '#ffe066', 50, 14);
+      say(F, 'SLIP!', o.x, o.y - HEIGHT(o) - 30, '#ffe066', 50, 14);
     }
 
     // ================================================================ vstup (idle/walk/block, pred moves.js: unshift)
@@ -469,7 +469,7 @@
         if (home(F)) api.text('DOMA +25 %', i === 0 ? 12 + 132 : W - 12 - 132, 61, 7, i === 0 ? 'left' : 'right', WATER.light);
         ctx.restore();
         if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && api.inputKind(i) !== 'cpu')
-          api.text('BUBLINA: ♪ · HRNČEK: ↓ VPRED ÚDER · MLÁKA: ↓ ↓ KOP', i === 0 ? 8 : W - 30, 254, 7, i === 0 ? 'left' : 'right', '#b8f0c0');
+          api.text('BUBBLE: ♪ · SOUL CUP: ↓ VPRED ÚDER · PUDDLE: ↓ ↓ KOP', i === 0 ? 8 : W - 30, 254, 7, i === 0 ? 'left' : 'right', '#b8f0c0');
       });
     });
 

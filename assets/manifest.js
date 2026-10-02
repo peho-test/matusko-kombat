@@ -160,10 +160,10 @@ window.MK_ASSETS = {
     "uppercut": {
      "src": "assets/matusko/uppercut.png",
      "frames": 14,
-     "w": 122,
-     "h": 152,
-     "ax": 50,
-     "ay": 151,
+     "w": 103,
+     "h": 196,
+     "ax": 52,
+     "ay": 196,
      "fps": 15.0,
      "hi": 2,
      "src2": "assets/matusko/uppercut@2.png"
@@ -514,10 +514,10 @@ window.MK_ASSETS = {
     "uppercut": {
      "src": "assets/boss/uppercut.png",
      "frames": 14,
-     "w": 114,
-     "h": 184,
-     "ax": 43,
-     "ay": 183,
+     "w": 102,
+     "h": 191,
+     "ax": 46,
+     "ay": 189,
      "fps": 15.0,
      "hi": 2,
      "src2": "assets/boss/uppercut@2.png"
@@ -1017,10 +1017,10 @@ window.MK_ASSETS = {
     "uppercut": {
      "src": "assets/bananac/uppercut.png",
      "frames": 14,
-     "w": 104,
-     "h": 177,
-     "ax": 42,
-     "ay": 173,
+     "w": 91,
+     "h": 176,
+     "ax": 47,
+     "ay": 175,
      "fps": 15.0,
      "hi": 2,
      "src2": "assets/bananac/uppercut@2.png"
@@ -1413,6 +1413,11 @@ window.MK_ASSETS = {
   }
  ],
  "images": {
+  "baby_boss": "assets/ui/baby_boss.png",
+  "baby_matusko": "assets/ui/baby_matusko.png",
+  "baby_ninja": "assets/ui/baby_ninja.png",
+  "baby_simon": "assets/ui/baby_simon.png",
+  "baby_vodnik": "assets/ui/baby_vodnik.png",
   "cake_matusko": "assets/ui/cake_matusko.png",
   "cake_simon": "assets/ui/cake_simon.png",
   "dragon": "assets/ui/dragon.png",
