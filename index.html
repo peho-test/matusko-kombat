@@ -59,6 +59,7 @@
 <script src="glitch.js"></script>
 <script src="vodnik.js"></script>
 <script src="rocky.js"></script>
+<script src="stats.js"></script>
 <script src="ladder.js"></script>
 <script src="game.js"></script>
 <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { const had = !!navigator.serviceWorker.controller; let done = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (done || !had) return; done = true; const sc = window.__MK && __MK.scene; if (!sc || sc === 'title' || sc === 'intro') location.reload(); }); navigator.serviceWorker.register('sw.js').catch(() => {}); }</script>

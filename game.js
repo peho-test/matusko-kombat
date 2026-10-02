@@ -1326,6 +1326,7 @@ MENU.push(
 );
 function menuLayout() {                  // pri 6+ položkách sa znak a nápis posunú vyššie (drawTitle) a menu má viac miesta
   const n = MENU.length;
+  if (n > 7) return { y0: 172, step: 11, compact: true };             // 8+ položiek (napr. SIEŇ SLÁVY)
   if (n > 5) return { y0: 174, step: 12, compact: true };
   return { y0: n > 4 ? 196 : 202, step: n > 4 ? Math.max(10, Math.floor(60 / n)) : 15 };
 }

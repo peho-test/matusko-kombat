@@ -327,7 +327,7 @@
     }
     function startHoraSelect() { L.pending = true; L.active = false; S.codeTien = false; game.mode = 1; api.setScene('select'); }
     function beginLadder(player) {
-      Object.assign(L, { pending: false, active: true, player, steps: buildLadder(player), idx: 0, lostRounds: 0, continues: 0, climbFrom: -1, newUnlocks: [], done: false });
+      Object.assign(L, { pending: false, active: true, player, steps: buildLadder(player), idx: 0, lostRounds: 0, continues: 0, climbFrom: -1, newUnlocks: [], done: false, startedAt: Date.now() });
       prewarm([player, ...L.steps.map(s => s.id)]);
       api.setScene('hora');
     }
@@ -344,6 +344,7 @@
     }
     function finishLadder() {
       L.newUnlocks = []; L.done = true;
+      if (api.stats) api.stats.hora(L.player, L.startedAt ? Date.now() - L.startedAt : 0);   // SIEŇ SLÁVY: zdolaná hora + čas výstupu
       if (unlock('TIEN', true)) L.newUnlocks.push(UNLOCKS.TIEN.label());
       if (L.lostRounds === 0 && L.continues === 0 && unlock('BOSS', true)) L.newUnlocks.push(UNLOCKS.BOSS.label());
       restoreLevel();
