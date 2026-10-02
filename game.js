@@ -161,7 +161,7 @@ function synth(name, vol) {
   }
 }
 const SAY_TEXT = {
-  title: 'Matúško Kombat!', round1: 'Round one', round2: 'Round two', round3: 'Final round', fight: 'Fight!',
+  title: 'Matúš K.O. Kombat!', round1: 'Round one', round2: 'Round two', round3: 'Final round', fight: 'Fight!',
   finish: 'Finish him!', matusko_wins: 'Matúško wins!', simon_wins: 'Šimon wins!', flawless: 'Flawless victory!',
   rockyality: 'Rockyality!', babality: 'Babality!', folklority: 'Folklority!', friendship: 'Friendship... friendship?',
   birthday: 'Všetko najlepšie k dvanástym narodeninám, Matúško!', draw: 'Draw!',
@@ -853,6 +853,39 @@ function bigText(str, x, y, size, metal = false) {
   ctx.lineWidth = Math.max(3, size / 6); ctx.strokeStyle = '#000'; ctx.strokeText(str, x, y);
   ctx.fillStyle = g; ctx.fillText(str, x, y);
 }
+// logo: MATÚŠ + akčné „KO“ (knockout) + KOMBAT — hlásateľ to číta „Matúš K.O. Kombat!“
+function drawLogoTitle(x, y, size, t = 0) {
+  ctx.save();
+  ctx.font = `bold ${size}px Impact, "Arial Black", "Trebuchet MS", sans-serif`;
+  const w1 = ctx.measureText('MATÚŠ').width, w3 = ctx.measureText('KOMBAT').width, gap = size * 0.22;
+  const koSize = Math.round(size * 1.18);
+  ctx.font = `italic 900 ${koSize}px "Arial Black", Impact, sans-serif`;
+  const wK = ctx.measureText('KO').width * 0.92;
+  const x0 = x - (w1 + wK + gap + w3) / 2;
+  bigText('MATÚŠ', x0 + w1 / 2, y, size);
+  bigText('KOMBAT', x0 + w1 + wK + gap + w3 / 2, y, size);
+  const kx = x0 + w1 + wK / 2, ky = y - size * 0.36, pulse = 1 + Math.sin(t / 7) * 0.04;
+  ctx.translate(kx, ky); ctx.rotate(-0.14); ctx.scale(pulse, pulse);
+  ctx.beginPath();                                       // komiksový výbuch za KO
+  for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2, r = (i % 2 ? 0.55 : 0.95) * koSize * 0.82; ctx.lineTo(Math.cos(a) * r * 1.2, Math.sin(a) * r); }
+  ctx.closePath(); ctx.fillStyle = '#ffe23a'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#000'; ctx.stroke();
+  ctx.font = `italic 900 ${koSize}px "Arial Black", Impact, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(4, koSize / 5); ctx.strokeStyle = '#000'; ctx.strokeText('KO', 0, 2);
+  ctx.lineWidth = Math.max(2, koSize / 12); ctx.strokeStyle = '#fff'; ctx.strokeText('KO', 0, 2);
+  ctx.fillStyle = '#e8120c'; ctx.fillText('KO', 0, 2);
+  ctx.restore();
+}
+// červená japonská pečiatka 十二 (= dvanásť) kreslená obdĺžnikmi, aby nezávisela od písma zariadenia
+function drawSeal(x, y, s = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.08); ctx.scale(s, s);
+  ctx.fillStyle = '#c8102e'; ctx.fillRect(-10, -16, 20, 32);
+  ctx.strokeStyle = '#f6e7d0'; ctx.lineWidth = 1.2; ctx.strokeRect(-8, -14, 16, 28);
+  ctx.fillStyle = '#f6e7d0';
+  ctx.fillRect(-6, -8, 12, 2.2); ctx.fillRect(-1.2, -13, 2.4, 11.5);          // 十
+  ctx.fillRect(-4.5, 3, 9, 2); ctx.fillRect(-6.5, 9, 13, 2.4);                 // 二
+  ctx.restore();
+}
 
 // ===================================================================== kreslenie: postavy
 const POSES = {
@@ -1317,8 +1350,9 @@ function drawTitle() {
     ctx.strokeStyle = '#7a5a12'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(W / 2, 64, 42, 0, Math.PI * 2); ctx.stroke();
     drawRocky({ x: W / 2 - 4, y: 94, dir: 1, state: 'sit', t: sceneT });
   }
-  bigText('MATÚŠKO KOMBAT', W / 2, compact ? 124 : 150, compact ? 38 : 42);
+  drawLogoTitle(W / 2, compact ? 124 : 150, compact ? 36 : 40, sceneT);
   bigText('XII', W / 2, compact ? 156 : 186, compact ? 28 : 34, true);
+  drawSeal(W / 2 + 34, compact ? 146 : 176, compact ? 0.9 : 1.05);
   const L = menuLayout(), fs = MENU.length > 4 ? 10 : 11;
   MENU.forEach((it, i) => { const lb = typeof it.label === 'function' ? it.label() : it.label;
     text((i === game.menuIdx ? '▶ ' : '  ') + lb, W / 2 - 44, L.y0 + i * L.step, fs, 'left', i === game.menuIdx ? '#ffd200' : '#bbb'); });
@@ -1537,7 +1571,7 @@ function drawCreeper(c) {
 }
 function drawLoading() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  bigText('MATÚŠKO KOMBAT XII', W / 2, 120, 30);
+  drawLogoTitle(W / 2, 110, 28); bigText('XII', W / 2, 138, 20, true);
   ctx.fillStyle = '#333'; ctx.fillRect(140, 150, 200, 8);
   ctx.fillStyle = '#ffc21a'; ctx.fillRect(140, 150, Math.round(200 * (loadTotal ? loadDone / loadTotal : 1)), 8);
 }
