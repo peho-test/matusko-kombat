@@ -1519,11 +1519,12 @@ function closeSubmenu() { game.submenu = null; game.menuIdx = game.subParent || 
 function groupMenu() {                    // po načítaní modulov: položky hier presunie do podmenu
   const lab = it => (typeof it.label === 'function' ? it.label() : it.label);
   const take = l => { const i = MENU.findIndex(it => lab(it) === l); return i >= 0 ? MENU.splice(i, 1)[0] : null; };
+  const group = g => MENU.filter(it => it.group === g).map(it => MENU.splice(MENU.indexOf(it), 1)[0]);   // položky modulov s { group: 'single' | 'multi' } (napr. TRÉNING)
   const hora = take('HORA (1 HRÁČ)'), one = take('1 HRÁČ'), two = take('2 HRÁČI'), net = take('HRA CEZ SIEŤ');
   SUBMENU.single = [hora && { label: 'HORA — výstup na vrchol', act: hora.act, hint: 'Vyber si vežu a choď súper za súperom až k bossovi MASTER STORM' },
-    one && { label: 'JEDEN ZÁPAS', act: one.act, hint: 'Zápas proti počítaču' }, { label: '◀ SPÄŤ', back: true, hint: '' }].filter(Boolean);
+    one && { label: 'JEDEN ZÁPAS', act: one.act, hint: 'Zápas proti počítaču' }, ...group('single'), { label: '◀ SPÄŤ', back: true, hint: '' }].filter(Boolean);
   SUBMENU.multi = [two && { label: 'NA JEDNOM POČÍTAČI', act: two.act, hint: 'Dvaja na jednej klávesnici alebo s dvoma ovládačmi PS' },
-    net && { label: 'CEZ SIEŤ', act: net.act, hint: 'Každý na svojom mobile alebo počítači (treba internet)' }, { label: '◀ SPÄŤ', back: true, hint: '' }].filter(Boolean);
+    net && { label: 'CEZ SIEŤ', act: net.act, hint: 'Každý na svojom mobile alebo počítači (treba internet)' }, ...group('multi'), { label: '◀ SPÄŤ', back: true, hint: '' }].filter(Boolean);
   MENU.unshift({ label: 'MULTIPLAYER', sub: 'multi', act() { openSubmenu('multi'); } });
   MENU.unshift({ label: 'SINGLE PLAYER', sub: 'single', act() { openSubmenu('single'); } });
   const ov = MENU.find(it => it.label === 'OVLÁDANIE');

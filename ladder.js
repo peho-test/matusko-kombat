@@ -446,7 +446,7 @@
 
     // ================================================================= sledovanie zápasu (kolá, flawless, Toasty)
     function roundDecided(F, w) {
-      if (w < 0) return;
+      if (w < 0 || F.trening) return;          // TRÉNING (trening.js): kolá ani flawless sa nerátajú, nič sa neodomyká
       M.roundsWon[w]++;
       const f = F.fighters[w];
       if (!isHuman(f)) return;

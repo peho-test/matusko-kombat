@@ -42,7 +42,7 @@
     api.hooks.matchStart.push(F => { if (!(api.NET && api.NET.role === 'guest')) F.statId = Math.random().toString(36).slice(2, 10); });
     api.hooks.frame.push(() => {               // beží aj u sieťového hosťa: zapisuje zo stavu, ktorý príde od hostiteľa
       const F = api.fight;
-      if (!F || !F.statId || !F.fighters) return;
+      if (!F || !F.statId || !F.fighters || F.trening) return;          // TRÉNING (trening.js) sa do SIENE SLÁVY nezapisuje
       if (F.phase === 'roundEnd' && F.roundWinner >= 0) {
         const k = F.statId + ':r' + F.round;
         if (!seen.has(k)) { seen.add(k); const w = F.fighters[F.roundWinner]; if (w && w.damageTaken === 0) { inc(S.flawless, w.id); save(); } }
