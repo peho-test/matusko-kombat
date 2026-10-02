@@ -39,6 +39,7 @@
 <meta name="theme-color" content="#000000">
 <link rel="apple-touch-icon" href="assets/ui/icon192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<script>window.MK_BUILD = "v c6f163 \u00b7 2. 10. 12:04";</script>
 </head>
 <body>
 <canvas id="game" width="480" height="270"></canvas>
@@ -66,6 +67,6 @@
 <script src="credits.js"></script>
 <script src="ladder.js"></script>
 <script src="game.js"></script>
-<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { const had = !!navigator.serviceWorker.controller; let done = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (done || !had) return; done = true; const sc = window.__MK && __MK.scene; if (!sc || sc === 'title' || sc === 'intro') location.reload(); }); navigator.serviceWorker.register('sw.js').catch(() => {}); }</script>
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { const had = !!navigator.serviceWorker.controller; let pending = false; const atMenu = () => { const sc = window.__MK && __MK.scene; return !sc || sc === 'title' || sc === 'intro'; }; navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) pending = true; }); setInterval(() => { if (pending && atMenu()) { pending = false; location.reload(); } }, 1000); navigator.serviceWorker.register('sw.js').then(r => { setInterval(() => r.update().catch(() => {}), 600000); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') r.update().catch(() => {}); }); }).catch(() => {}); }</script>
 </body>
 </html>

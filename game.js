@@ -1559,6 +1559,7 @@ function drawTitle() {
   else if (!audioUnlocked && (padUsed || sceneT > 240)) text('ZVUK: klikni myšou alebo stlač kláves', W / 2, 264, 9, 'center', '#9fd8ff');
   else if (hint) text(hint, W / 2, 264, 9, 'center', '#cfe6ff');
   else if (bd && sceneT % 60 < 40) text(`Všetko najlepšie k ${bd.age}. narodeninám, Matúško!`, W / 2, 264, 9, 'center', '#ffb3b3');
+  if (window.MK_BUILD) text(String(window.MK_BUILD), 4, 266, 6, 'left', '#6c6576');      // číslo verzie (web: build_web.py), aby sa dalo skontrolovať, či mobil nemá starú
 }
 function controlPages() {                  // 1. strana základ, ďalšie z pomocníkov modulov ([pohyb, P1, P2, PS, dotyk])
   const pages = [{ title: 'OVLÁDANIE' }];
