@@ -308,7 +308,7 @@
 
     // ================================================================= stav
     const L = { pending: false, active: false, player: null, tower: 'warrior', steps: [], idx: 0, lostRounds: 0, continues: 0, climbFrom: -1, freshIdx: -1, newUnlocks: [], done: false };
-    const TS = { sel: 1, cols: null };          // výber veže: posledná vybraná (predvolene WARRIOR), stĺpce pre obrazovku
+    const TS = { sel: 0, cols: null, arm: -1 }; // výber veže: posledná vybraná (predvolene NOVICE: audit 2. 10., hrajú aj rodičia), stĺpce pre obrazovku
     const S = { armed: false, codeSecret: false, ssj: [false, false], opp: SECRET_ID, player: null };   // tajomstvá
     const T = { on: false, t: 0, life: TOASTY_LIFE, count: 0, wink: 0 };                         // Toasty
     let M = null;               // aktuálny zápas: druh, kolá, flawless
@@ -807,11 +807,17 @@
       const ready = climbing ? t > CLIMB_END : t > 25;
       if (ready && t % 60 < 42) text(touchUI() ? 'ťukni = do boja' : 'ÚDER / ENTER = do boja      ESC = menu', W / 2, 265, 8, 'center', '#fff');
     }
+    const HBACK = { x: 6, y: 6, w: 64, h: 18 };        // ◀ na ťuk: mobil nemá Esc (Codex r6: z výberu veže a BATTLE PLAN sa na mobile nedalo vrátiť)
+    function drawBack(label) {
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(HBACK.x, HBACK.y, HBACK.w, HBACK.h);
+      text(label, HBACK.x + HBACK.w / 2, HBACK.y + 13, 10, 'center', '#ffd200');
+    }
     api.registerScene('hora', {
       update() {
         const t = api.sceneT, menu = api.menu, climbing = L.climbFrom >= 0;
         if (t === 1) api.music('title');
         if (menu.back) { endLadder(); api.setScene('title'); api.music('title'); return; }
+        if (menu.tapPos && L.idx === 0 && api.inBtn(menu.tapPos, HBACK)) { endLadder(); api.setScene('title'); api.music('title'); return; }   // len pred prvým zápasom: nič sa nestratí
         if (climbing) {
           if (t === 3) api.sfx('punch', 0.5);             // pečiatka na porazenom
           if (t === CLIMB0) api.sfx('whoosh', 0.7);
@@ -820,7 +826,7 @@
         const ready = climbing ? t > CLIMB_END : t > 25;     // výstup sa nepreskočí, ani keď sa po výhre ďalej mláti do tlačidiel
         if ((menu.ok && ready) || t > 240) { L.climbFrom = -1; L.freshIdx = -1; goLadderFight(); }   // ťuk na mobile = menu.ok
       },
-      draw: drawHora,
+      draw() { drawHora(); if (L.idx === 0 && L.steps.length) drawBack('◀ MENU'); },
     });
 
     // ================================================================= VÝBER VEŽE (ako v MK: NOVICE / WARRIOR / MASTER)
@@ -846,15 +852,21 @@
     api.registerScene('hora_veza', {
       update() {
         const t = api.sceneT, menu = api.menu;
-        if (menu.back) { startHoraSelect(); return; }                       // späť na výber postavy
-        if (menu.left || menu.right) { TS.sel = (TS.sel + (menu.right ? 1 : TOWERS.length - 1)) % TOWERS.length; api.sfx('select'); }
-        if (menu.tapPos) { const k = towerAt(menu.tapPos); if (k < 0) return; TS.sel = k; }   // ťuk mimo veží nič nepotvrdí
+        if (menu.back || (menu.tapPos && api.inBtn(menu.tapPos, HBACK))) { startHoraSelect(); return; }   // späť na výber postavy (aj ťukom)
+        if (t <= 1) TS.arm = -1;
+        if (menu.left || menu.right) { TS.sel = (TS.sel + (menu.right ? 1 : TOWERS.length - 1)) % TOWERS.length; TS.arm = -1; api.sfx('select'); }
+        if (menu.tapPos) {                                                 // ťuk mimo veží nič; 1. ťuk vežu označí, 2. ťuk na tú istú potvrdí (ako výber postavy)
+          const k = towerAt(menu.tapPos); if (k < 0) return;
+          if (TS.arm !== k || TS.sel !== k) { TS.sel = k; TS.arm = k; api.sfx('select'); return; }
+        }
         if (menu.ok && t > 30) { api.sfx('confirm'); beginLadder(L.player, TOWERS[TS.sel].key); }   // pol sekundy: mlátenie ÚDERU z výberu postavy vežu nevyberie
       },
       draw() {
         const t = api.sceneT, cols = TS.cols || (TS.cols = towerColumns());
         drawBattleBg(t, null);
         bigText('VYBER SI VEŽU', W / 2, 30, 24);
+        drawBack('◀ SPÄŤ');
+        if (touchUI()) text(TS.arm >= 0 ? 'ťukni ešte raz na tú istú vežu = potvrdiť' : 'ťukni na vežu, potom ešte raz = potvrdiť', W / 2, 46, 8, 'center', TS.arm >= 0 ? '#ffd200' : '#bbb');
         cols.forEach((c, k) => {
           const sel = k === TS.sel;
           if (c.slots.length) { drawPillar(c.x0 - 5, c.x1 + 5, c.top + 8, TBOT + 6); ctx.fillStyle = '#1a1522'; ctx.fillRect(c.x0 - 8, TBOT + 4, c.x1 - c.x0 + 16, 4); }

@@ -31,6 +31,7 @@
   #musicBtn { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); right: 12px; width: 36px; height: 36px; border-radius: 50%;
               border: 2px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); color: #ffd200; font: 700 18px system-ui, sans-serif; cursor: pointer; padding: 0; }
   #musicBtn.off { color: #777; text-decoration: line-through; }
+  @media (pointer: coarse) { #musicBtn { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; } }   /* mobil: hore vpravo, nie vedľa ♪ a KOP (audit 2. 10.) */
   #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
             color: #ffd200; background: #000; font: 700 20px system-ui, sans-serif; padding: 24px; }
   @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
@@ -39,7 +40,7 @@
 <meta name="theme-color" content="#000000">
 <link rel="apple-touch-icon" href="assets/ui/icon192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<script>window.MK_BUILD = "v 6c1a4c \u00b7 2. 10. 17:06";</script>
+<script>window.MK_BUILD = "v e0a22f \u00b7 2. 10. 20:48";</script>
 </head>
 <body>
 <canvas id="game" width="480" height="270"></canvas>

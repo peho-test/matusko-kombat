@@ -46,15 +46,16 @@
       L.code = String(Math.floor(1000 + Math.random() * 9000)); L.mode = 'host-wait'; L.msg = 'Pripájam sa na server…'; L.since = api.frame;
       let peer;
       try { peer = new window.Peer(PREFIX + L.code, { debug: 0 }); } catch (e) { return fail('Sieťová hra tu nefunguje.'); }
-      L.peer = peer;
-      peer.on('open', () => { L.msg = 'Čakám na súpera…'; });
+      L.peer = peer; L.open = false;
+      peer.on('open', () => { L.open = true; L.msg = 'Čakám na súpera…'; });
       peer.on('error', e => { if (e.type === 'unavailable-id' && attempt < 3) host(attempt + 1); else if (!NET.role) fail(errText(e)); });
       peer.on('connection', conn => {
         if (L.conn) { try { conn.close(); } catch (e) { /* druhý hosť nemá miesto */ } return; }
         L.conn = conn;
         conn.on('open', () => startHost(conn));
         conn.on('data', onHostData);
-        conn.on('close', lost); conn.on('error', lost);
+        const drop = () => { if (NET.role) lost(); else if (L.conn === conn) L.conn = null; };   // zavreté ešte pred otvorením: čakať na súpera ďalej (Codex r5)
+        conn.on('close', drop); conn.on('error', drop);
       });
     }
     function join(code) {
@@ -85,18 +86,20 @@
 
     // ---------------------------------------------------------------- hostiteľ: vstup hosťa + odosielanie stavu
     function onHostData(d) {
+      if (NET.role !== 'host') return;                                // po odchode do menu už nič od hosťa nespracovať
       L.lastRx = api.frame;
       if (d && d.t === 'bye') return lost('SÚPER ODIŠIEL DO MENU');
       if (!d || d.t !== 'i') return;
       const r = api.ctls[1].remote; if (!r) return;
       r.held = d.h || {};
       for (const b of d.p || []) r.hits.add(b);
+      if (Array.isArray(d.tp)) r.tap = d.tp;                          // ťuk hosťa na portrét (výber postavy dotykom), spracuje game.js updateSelect
     }
     function pack() {
       const F = api.fight, g = api.game;
       const snap = { sc: api.scene, st: api.sceneT, o: api.ORDER.slice(),     // o = poradie postáv hostiteľa (odomknuté postavy má každý zariadenie inak)
         g: { mode: g.mode, picks: g.picks, cursor: g.cursor, locked: g.locked, stageSel: g.stageSel, lastWinner: g.lastWinner,
-             score: g.score, menuIdx: g.menuIdx, rockyMsg: g.rockyMsg, msg: g.msg, msgT: g.msgT } };
+             score: g.score, menuIdx: g.menuIdx, rockyMsg: g.rockyMsg, msg: g.msg, msgT: g.msgT, tapArm: g.tapArm } };
       if (F && ['vs', 'fight', 'eject', 'result'].includes(api.scene)) {
         try {
           snap.F = JSON.parse(JSON.stringify(F, function (k, v) {
@@ -118,7 +121,7 @@
       if (NET.role === 'guest' && L.conn && api.menu.tapPos) {                           // hosť nemá vlastnú logiku scén: tlačidlá MENU rieši tu
         const tp = api.menu.tapPos, F = api.fight;
         if ((api.scene === 'result' && api.inBtn(tp, api.RESULT_BTNS.menu)) || (api.scene === 'select' && api.inBtn(tp, api.SELECT_BACK))
-            || (api.scene === 'fight' && F && F.paused)) return leave();
+            || (api.scene === 'fight' && F && F.paused && api.inBtn(tp, api.PAUSE_BTNS.menu))) return leave();   // v pauze len tlačidlo MENU, nie hocijaký ťuk
       }
       if (NET.role !== 'host' || !L.conn || !L.conn.open) return;
       L.t++;
@@ -155,6 +158,7 @@
       api.ORDER.length = 0; api.ORDER.push(...L.ownOrder); L.ownOrder = null;
     }
     function onGuestData(d) {
+      if (NET.role !== 'guest') return;                               // po odchode (leave) neskoré snímky hostiteľa nevrátia hosťa do boja
       L.lastRx = api.frame;
       if (!d) return;
       if (d.t === 'bye') return lost('SÚPER ODIŠIEL DO MENU');
@@ -179,7 +183,10 @@
       if (!L.conn || !L.conn.open) return;
       const c = api.ctls[0];
       const hits = api.BUTTONS_LIST.filter(b => c.pressed[b]);
-      try { L.conn.send({ t: 'i', h: c.held, p: hits }); } catch (e) { lost(); }
+      const tp = api.menu.tapPos;                                     // dotykový hosť: ťuk na portrét pošle hostiteľovi (prvý označí, druhý potvrdí)
+      const F = api.fight, paused = api.scene === 'fight' && F && F.paused;   // aj ťuk na POKRAČOVAŤ v pauze hostiteľa
+      const tap = tp && ((api.scene === 'select' && !api.inBtn(tp, api.SELECT_BACK)) || (paused && api.inBtn(tp, api.PAUSE_BTNS.cont))) ? [Math.round(tp.x), Math.round(tp.y)] : null;
+      try { L.conn.send(tap ? { t: 'i', h: c.held, p: hits, tp: tap } : { t: 'i', h: c.held, p: hits }); } catch (e) { lost(); }
     };
 
     // ---------------------------------------------------------------- lobby (scéna 'net')
@@ -197,10 +204,13 @@
       else if (k === 'OK') { if (L.entry.length === 4) join(L.entry); else api.sfx('block'); }
       else if (L.entry.length < 4) { L.entry += k; api.sfx('select'); }
     }
+    const BACK = { x: 6, y: 6, w: 64, h: 18 };                     // ◀ SPÄŤ na ťuk (mobil nemá Esc; Codex r5: z KÓDU ZÁPASU sa nedalo odísť)
     api.registerScene('net', {
       update() {
         const m = api.menu;
-        if (m.back) { cleanup(); if (L.mode === 'menu' || L.mode === 'error') api.setScene('title'); L.mode = 'menu'; return; }
+        const eraseKey = L.mode === 'join-enter' && typedDigit === '⌫';      // fyzický Backspace pri zadávaní kódu maže číslicu, nie odchod (Codex r7)
+        if (m.back && !eraseKey) { cleanup(); if (L.mode === 'menu' || L.mode === 'error') api.setScene('title'); L.mode = 'menu'; return; }
+        if (m.tapPos && L.mode !== 'menu' && api.inBtn(m.tapPos, BACK)) { cleanup(); L.mode = 'menu'; L.msg = ''; api.sfx('select'); return; }
         if (L.mode === 'menu') {
           if (m.tapPos) { const i = Math.floor((m.tapPos.y - 112) / 22); if (i >= 0 && i < ITEMS.length && Math.abs(m.tapPos.x - api.W / 2) < 110) L.idx = i; }
           if (m.up) L.idx = (L.idx + ITEMS.length - 1) % ITEMS.length;
@@ -215,16 +225,20 @@
             const c = Math.floor((m.tapPos.x - PAD_X) / PAD_W), r = Math.floor((m.tapPos.y - PAD_Y) / PAD_H);
             if (r >= 0 && r < 4 && c >= 0 && c < 3) padKey(PAD[r][c]);
           } else {
-            // ovládač / šípky: ↑↓ mení číslicu na pozícii, ←→ posúva, ÚDER = OK
-            if (L.entry.length < 4) L.entry = L.entry.padEnd(4, '0');
-            const d = +L.entry[L.cur] || 0;
-            if (m.up || m.down) { const nd = (d + (m.up ? 1 : 9)) % 10; L.entry = L.entry.slice(0, L.cur) + nd + L.entry.slice(L.cur + 1); api.sfx('select'); }
-            if (m.left) L.cur = (L.cur + 3) % 4;
-            if (m.right) L.cur = (L.cur + 1) % 4;
-            if (m.ok && api.sceneT > 15 && !m.tap) join(L.entry);
+            // ovládač / šípky: ↑↓ mení číslicu na pozícii, ←→ posúva, ÚDER = OK. Nuly doplniť až pri použití šípok: predtým sa kód
+            // dopĺňal na „0000“ v každej snímke bez ťuku, a tak ťukané aj písané číslice nemali kam pribudnúť (mobil sa nevedel pripojiť)
+            if ((m.up || m.down || m.left || m.right) && L.entry.length < 4) L.entry = L.entry.padEnd(4, '0');
+            if (L.entry.length === 4) {
+              const d = +L.entry[L.cur] || 0;
+              if (m.up || m.down) { const nd = (d + (m.up ? 1 : 9)) % 10; L.entry = L.entry.slice(0, L.cur) + nd + L.entry.slice(L.cur + 1); api.sfx('select'); }
+              if (m.left) L.cur = (L.cur + 3) % 4;
+              if (m.right) L.cur = (L.cur + 1) % 4;
+            }
+            if (m.ok && api.sceneT > 15 && !m.tap) { if (L.entry.length === 4) join(L.entry); else api.sfx('block'); }
           }
         } else if (L.mode === 'joining' || L.mode === 'host-wait') {
           if (L.mode === 'joining' && api.frame - L.since > 60 * 20) fail('Súper neodpovedá. Skontroluj kód a internet.');
+          if (L.mode === 'host-wait' && !L.open && api.frame - L.since > 60 * 20) fail('Nedá sa spojiť so serverom. Je zapnutý internet?');
           if (m.ok && m.tap && L.mode === 'host-wait' && api.sceneT > 30) { /* ťuk nič nerobí, späť je Esc / SPÄŤ */ }
         } else if (L.mode === 'error') {
           if (m.ok && api.sceneT > 15) { L.mode = 'menu'; L.msg = ''; }
@@ -236,6 +250,10 @@
         ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
         bigText('HRA CEZ SIEŤ', W / 2, 40, 28);
         text('Každý hrá na svojom mobile alebo počítači. Najlepšie na rovnakej Wi-Fi.', W / 2, 60, 8, 'center', '#9fc4e8');
+        if (L.mode !== 'menu') {                                       // ◀ SPÄŤ na ťuk ako na výbere postavy
+          ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(BACK.x, BACK.y, BACK.w, BACK.h);
+          text('◀ SPÄŤ', BACK.x + BACK.w / 2, BACK.y + 13, 10, 'center', '#ffd200');
+        }
         if (L.mode === 'menu') {
           ITEMS.forEach((it, i) => { const on = i === L.idx;            // šípka pred riadkom, riadky sa neposúvajú
             if (on) text('▶', W / 2 - 70, 126 + i * 22, 13, 'left', '#ffd200');
@@ -246,7 +264,7 @@
           bigText(L.code, W / 2, 150, 54, true);
           text(L.msg, W / 2, 182, 11, 'center', api.frame % 60 < 40 ? '#ffd200' : '#c9a400');
           text('Súper zvolí PRIPOJIŤ SA KÓDOM a zadá tieto 4 čísla.', W / 2, 206, 9, 'center', '#8fa5bf');
-          text('Esc / Backspace = späť', W / 2, 250, 8, 'center', '#6f8199');
+          text('◀ SPÄŤ vľavo hore (alebo Esc) = späť', W / 2, 250, 8, 'center', '#6f8199');
         } else if (L.mode === 'join-enter') {
           text('ZADAJ KÓD ZÁPASU', 150, 92, 12, 'center', '#cfd8e8');
           for (let i = 0; i < 4; i++) {

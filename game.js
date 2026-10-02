@@ -375,7 +375,8 @@ const NO_INPUT = { held: {}, pressed: {} };
 
 // spoločný vstup pre menu (ktorýkoľvek hráč)
 const menu = { up: false, down: false, left: false, right: false, ok: false, back: false };
-let padMusicPrev = false, padUsed = false, padUnlockTried = false;
+let padMusicPrev = false, padUsed = false, padUnlockTried = false, padBackPrev = false;
+const PAD_BACK_SCENES = new Set(['select', 'hora_veza', 'controls', 'combobook', 'slava', 'net', 'credits']);   // ○ = späť (Codex r6); nie v boji, BATTLE PLAN, CONTINUE ani na výsledku
 const padActive = [false, false];
 function pollInput() {
   const ps = pads();
@@ -394,7 +395,8 @@ function pollInput() {
   menu.up = p('up'); menu.down = p('down'); menu.left = p('left'); menu.right = p('right');
   menu.ok = p('punch') || p('kick') || p('start') || touchTap;
   menu.tap = touchTap; menu.tapPos = touchTap ? tapPos : null;
-  menu.back = keysHit.has('Escape') || keysHit.has('Backspace');
+  const pb = !!((s0 && s0.kiai) || (s1 && s1.kiai)), padBack = pb && !padBackPrev; padBackPrev = pb;
+  menu.back = keysHit.has('Escape') || keysHit.has('Backspace') || (padBack && PAD_BACK_SCENES.has(scene));
   touchTap = false;
 }
 
@@ -679,9 +681,17 @@ function updateProjectiles() {
   F.beams = F.beams.filter(b => b.t < 34);
 }
 
+const PAUSE_BTNS = { cont: { x: W / 2 - 80, y: 160, w: 160, h: 28 }, menu: { x: W / 2 - 50, y: 200, w: 100, h: 20 } };   // dotyk: ťuk inde v pauze nič (omylom neodíde)
+const portraitMQ = typeof matchMedia === 'function' ? matchMedia('(orientation: portrait) and (pointer: coarse)') : null;
 function updateFight() {
   if (keysHit.has('Escape') || keysHit.has('KeyP') || ((ctls[0].pressed.start || ctls[1].pressed.start) && keysHit.size === 0)) F.paused = !F.paused;
-  if (F.paused) { if (keysHit.has('KeyQ') || menu.tap) { F.paused = false; setScene('title'); music('title'); } return; }
+  if (!F.paused && !NET.role && portraitMQ && portraitMQ.matches) F.paused = true;   // telefón otočený na výšku: zápas počká (Codex r6), pokračuje sa až tlačidlom
+  if (F.paused) {
+    const rt = NET.role === 'host' && ctls[1].remote && ctls[1].remote.tap;           // ťuk sieťového hosťa na POKRAČOVAŤ (net.js)
+    if (keysHit.has('KeyQ') || (menu.tapPos && inBtn(menu.tapPos, PAUSE_BTNS.menu))) { F.paused = false; setScene('title'); music('title'); }
+    else if ((menu.tapPos && inBtn(menu.tapPos, PAUSE_BTNS.cont)) || (rt && inBtn({ x: rt[0], y: rt[1] }, PAUSE_BTNS.cont))) F.paused = false;
+    return;
+  }
   F.t++;
   const [a, b] = F.fighters;
   if (F.phase === 'intro') {
@@ -1148,7 +1158,7 @@ function silhouette(f, anim, fr) {
 }
 function drawAura(f, anim, fr) {
   const t = performance.now() / 70;
-  if (Math.random() < 0.5) F.fx.push({ kind: 'spark', x: f.x + rnd(-24, 24), y: f.y - rnd(10, 140), vx: 0, vy: -rnd(0.8, 1.8), c: chance(0.5) ? '#fff3a0' : '#ffc21a', t: 0, life: 18 });
+  if (!F.paused && Math.random() < 0.5) F.fx.push({ kind: 'spark', x: f.x + rnd(-24, 24), y: f.y - rnd(10, 140), vx: 0, vy: -rnd(0.8, 1.8), c: chance(0.5) ? '#fff3a0' : '#ffc21a', t: 0, life: 18 });   // v pauze nie: častice by sa len hromadili (Codex r6)
   if (!anim) {
     const g = ctx.createRadialGradient(f.x, f.y - 70, 10, f.x, f.y - 70, 80);
     g.addColorStop(0, 'rgba(255,220,60,0.45)'); g.addColorStop(1, 'rgba(255,200,0,0)');
@@ -1469,7 +1479,14 @@ function drawFight() {
   if (F.paused) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
     bigText('PAUZA', W / 2, 120, 40);
-    if (inputKind(0) === 'touch') text('START = pokračovať     ťukni sem = menu', W / 2, 150, 10, 'center');
+    if (inputKind(0) === 'touch') {
+      const c = PAUSE_BTNS.cont, m = PAUSE_BTNS.menu;
+      ctx.fillStyle = 'rgba(255,210,0,0.28)'; ctx.fillRect(c.x, c.y, c.w, c.h); ctx.strokeStyle = '#ffd200'; ctx.lineWidth = 2; ctx.strokeRect(c.x, c.y, c.w, c.h);
+      text('▶ POKRAČOVAŤ', W / 2, c.y + 19, 13, 'center', '#fff');
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(m.x, m.y, m.w, m.h);
+      text('MENU', W / 2, m.y + 14, 10, 'center', '#ddd');
+      text('alebo START = pokračovať', W / 2, 146, 8, 'center', '#bbb');
+    }
     else text('ESC = pokračovať    Q = koniec    H = hudba    M = všetok zvuk', W / 2, 150, 10, 'center');
   }
 }
@@ -1479,7 +1496,7 @@ let scene = 'loading', sceneT = 0;
 const toast = { text: '', t: 0 };
 function showToast(t, dur = 100) { toast.text = t; toast.t = dur; }
 const confetti = [];
-function setScene(s) { if (scene === 'title' && s !== 'title') stopTitleVoice(); scene = s; sceneT = 0; if (s === 'select') { game.locked = [false, false]; game.picks = [null, null]; game.vsAt = 0; } if (s === 'result') music('result'); }
+function setScene(s) { if (scene === 'title' && s !== 'title') stopTitleVoice(); scene = s; sceneT = 0; if (s === 'select') { game.locked = [false, false]; game.picks = [null, null]; game.vsAt = 0; game.tapArm = [-1, -1]; } if (s === 'result') music('result'); }
 
 MENU.push(
   { label: '1 HRÁČ', act() { game.mode = 1; setScene('select'); } },
@@ -1622,24 +1639,39 @@ function selPos(i) {                       // ľavý horný roh políčka i (i =
   return { x: W / 2 - (rowN * SEL.pw + (rowN - 1) * SEL.gap) / 2 + c * (SEL.pw + SEL.gap), y: SEL.y + r * SEL.rowH };
 }
 function selectX0() { return selPos(0).x; }
+function selTapIndex(pos) {                // políčko pod prstom: 0..n-1 postava, n = ???, -1 nič
+  const n = ORDER.length;
+  for (let k = 0; k <= n; k++) { const q = selPos(k); if (pos.x >= q.x && pos.x <= q.x + SEL.pw && pos.y >= q.y && pos.y <= q.y + SEL.ph) return k; }
+  return -1;
+}
+function selTap(p, pos) {                  // Peťo: omylom ťuknutá postava nemá hneď spustiť hru → prvý ťuk označí, druhý na tú istú potvrdí
+  const i = selTapIndex(pos), n = ORDER.length;
+  if (!game.tapArm) game.tapArm = [-1, -1];
+  if (i >= 0 && i < n) {
+    if (game.tapArm[p] === i && game.cursor[p] === i) return true;
+    game.cursor[p] = i; game.tapArm[p] = i; sfx('select'); return false;
+  }
+  if (i === n && game.mode !== 2) { sfx('bark'); game.rockyMsg = 120; }
+  return false;
+}
 function updateSelect() {
   const n = ORDER.length;
-  if (menu.tapPos && !game.locked[0]) {                 // ťuk na portrét vyberie tú postavu (nie tú pod kurzorom)
-    const { x, y } = menu.tapPos;
-    let i = -1;
-    for (let k = 0; k <= n; k++) { const q = selPos(k); if (x >= q.x && x <= q.x + SEL.pw && y >= q.y && y <= q.y + SEL.ph) { i = k; break; } }
-    if (i >= 0 && i < n) game.cursor[0] = i;
-    else if (i === n) { menu.ok = false; sfx('bark'); game.rockyMsg = 120; }
-    else menu.ok = false;                               // ťuk mimo portrétov nič nepotvrdí
+  const tapOk = [false, false];
+  if (!game.tapArm) game.tapArm = [-1, -1];
+  if (menu.tapPos && !inBtn(menu.tapPos, SELECT_BACK)) {
+    if (!game.locked[0]) tapOk[0] = selTap(0, menu.tapPos);
+    menu.ok = false;                                    // ťuk sám nepotvrdzuje (ani mimo portrétov); potvrdí druhý ťuk na tú istú postavu
   }
+  const rem = NET.role === 'host' ? ctls[1].remote : null;   // sieťový hosť posiela aj ťuky na portréty (net.js), lebo nemá vlastnú logiku výberu
+  if (rem && rem.tap) { if (!game.locked[1]) tapOk[1] = selTap(1, { x: rem.tap[0], y: rem.tap[1] }); rem.tap = null; }
   for (let p = 0; p < 2; p++) {
     if (p === 1 && game.mode === 1) continue;
     if (game.locked[p]) continue;
     const c = ctls[p];
-    const src = game.mode === 1 ? menu : { left: c.pressed.left, right: c.pressed.right, ok: c.pressed.punch || c.pressed.kick || c.pressed.start || (p === 0 && touchTap) };
-    if (src.left) { game.cursor[p] = (game.cursor[p] + n - 1) % n; sfx('select'); }
-    if (src.right) { game.cursor[p] = (game.cursor[p] + 1) % n; sfx('select'); }
-    if (src.ok && sceneT > 15) {
+    const src = game.mode === 1 ? menu : { left: c.pressed.left, right: c.pressed.right, ok: c.pressed.punch || c.pressed.kick || c.pressed.start };
+    if (src.left) { game.cursor[p] = (game.cursor[p] + n - 1) % n; game.tapArm[p] = -1; sfx('select'); }
+    if (src.right) { game.cursor[p] = (game.cursor[p] + 1) % n; game.tapArm[p] = -1; sfx('select'); }
+    if ((src.ok || tapOk[p]) && sceneT > 15) {
       const id = ORDER[game.cursor[p]];
       if (game.locked[1 - p] && game.picks[1 - p] === id) { sfx('block'); showToast(ROSTER[id].name + ' UŽ MÁ HRÁČ ' + (2 - p)); }   // bratia proti sebe, nie zrkadlo
       else { game.locked[p] = true; game.picks[p] = id; sfx('confirm'); }
@@ -1692,6 +1724,11 @@ function drawSelect() {
     if (cur) (cur.blurb || []).forEach((l, k) => text(l, W / 2, SEL.y + 2 * SEL.rowH + 4 + k * 9, 7, 'center', '#ccc'));
   }
   if (game.rockyMsg > 0) text('ROCKY EŠTE TRÉNUJE…', W / 2, 252, 12, 'center', '#ffcf6e');
+  else if (inputKind(0) === 'touch' && !game.locked[NET.role === 'guest' ? 1 : 0]) {
+    const armed = game.tapArm && game.tapArm[NET.role === 'guest' ? 1 : 0] >= 0;
+    text(armed ? 'ťukni ešte raz na tú istú postavu = potvrdiť' : 'ťukni na postavu, potom ešte raz = potvrdiť', W / 2, 252, 9, 'center', armed ? '#ffd200' : '#bbb');
+  }
+  else if (inputKind(0) === 'pad') text('◀ ▶ výber   □ / ✕ potvrdiť   ○ späť', W / 2, 252, 9, 'center', '#888');
   else text(game.mode === 1 ? '← → výber   ÚDER/ENTER potvrdiť' : 'Každý hráč si vyberie svojimi klávesmi', W / 2, 252, 9, 'center', '#888');
   {                                                       // späť do menu: vždy (ťuk aj myš); klávesnica má aj Esc (Peťo: po šípke tlačidlo zmizlo)
     const b = SELECT_BACK; ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(b.x, b.y, b.w, b.h);
@@ -1774,7 +1811,8 @@ function updateResult() {
   if (sceneT % 4 === 0) confetti.push({ x: rnd(0, W), y: -5, vy: rnd(0.8, 2), vx: rnd(-0.5, 0.5), c: ['#ff4d4d', '#ffd200', '#4dd2ff', '#7dff6a', '#ff7ae0'][Math.floor(rnd(0, 5))] });
   for (const c of confetti) { c.x += c.vx; c.y += c.vy; }
   while (confetti.length && confetti[0].y > H + 10) confetti.shift();
-  if (menu.ok && sceneT > 60) { sfx('confirm'); setScene('select'); music('title'); }
+  const tapNext = menu.tapPos && inBtn(menu.tapPos, RESULT_BTNS.next);      // ťuk len na tlačidlo ĎALŠÍ ZÁPAS, nie hocikam (Codex r6: omylom ďalší zápas)
+  if (((menu.ok && !menu.tap) || tapNext) && sceneT > 60) { sfx('confirm'); setScene('select'); music('title'); }
   if (menu.back) { setScene('title'); music('title'); }
 }
 function drawResult() {
@@ -1853,6 +1891,7 @@ function update() {
     case 'result': updateResult(); break;
     default: if (SCENES[scene] && SCENES[scene].update) SCENES[scene].update();
   }
+  if (NET.role === 'host' && ctls[1].remote) ctls[1].remote.tap = null;   // nespracovaný ťuk hosťa neostane visieť do inej scény
   keysHit.clear();
 }
 function draw() {
@@ -1876,10 +1915,18 @@ function draw() {
     ctx.save(); ctx.globalAlpha = Math.min(1, toast.t / 20); text(l1, W / 2, 62, 14, 'center', '#ffd200'); if (l2) text(l2, W / 2, 78, 9, 'center', '#fff1b8'); ctx.restore(); }
 }
 let last = performance.now(), acc = 0;
+const loopErr = { n: 0, t: 0 };
 function frame(now) {
-  acc += Math.min(250, now - last); last = now;
-  while (acc >= STEP) { update(); acc -= STEP; }
-  draw();
+  try {
+    acc += Math.min(250, now - last); last = now;
+    while (acc >= STEP) { update(); acc -= STEP; }
+    draw();
+  } catch (e) {                                   // poistka: výnimka nesmie slučku zastaviť navždy (Codex r5/r6); opakovaná chyba → späť do menu
+    acc = 0;
+    loopErr.n = now - loopErr.t < 3000 ? loopErr.n + 1 : 1; loopErr.t = now;
+    if (loopErr.n <= 5) console.error('MK: chyba v hernej slučke: ' + (e && e.message));   // pri trvalej chybe nezahltiť konzolu
+    if (loopErr.n === 20 && scene !== 'title') { try { setScene('title'); music('title'); showToast('NASTALA CHYBA, HRA SA VRÁTILA DO MENU'); } catch (e2) { /* nič */ } }
+  }
   requestAnimationFrame(frame);
 }
 const api = {
@@ -1895,8 +1942,8 @@ const api = {
   registerPalette(name, fn) { PALETTES[name] = fn; },
   addMenuItem(item, index = MENU.length) { MENU.splice(index, 0, item); },
   animFallback(state, anim) { ANIM_FALLBACK[state] = anim; },
-  MENU, SUBMENU, birthday, RESULT_BTNS, SELECT_BACK, inBtn, MUSIC_POOL, ANIM_FALLBACK, NET, BUTTONS_LIST: BUTTONS,
-  setFight(obj) { F = obj; }, setSceneRaw(name, t) { scene = name; sceneT = t; },
+  MENU, SUBMENU, birthday, RESULT_BTNS, SELECT_BACK, PAUSE_BTNS, inBtn, MUSIC_POOL, ANIM_FALLBACK, NET, BUTTONS_LIST: BUTTONS,
+  setFight(obj) { F = obj; }, setSceneRaw(name, t) { scene = name; sceneT = t; }, selPos,
   get toast() { return toast; },
 };
 for (const m of MODULES) { try { m.init(api); } catch (e) { console.error('Modul ' + m.name, e); } }

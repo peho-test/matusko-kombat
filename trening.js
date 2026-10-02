@@ -267,8 +267,8 @@
     function drawPanel(F) {
       const ctx = api.ctx, L = panelLayout(F), n = T.rows.filter(r => T.done[r.id]).length;
       const behind = F.fighters.some(f => f.x + 36 > L.x && f.x - 36 < L.x + L.w && f.y > L.y && f.y - 150 < L.y + L.h);   // bojovník za panelom
-      ctx.save(); ctx.globalAlpha = behind ? 0.42 : 1;
-      rrect(ctx, L.x, L.y, L.w, L.h, 4); ctx.fillStyle = 'rgba(8,8,22,0.5)'; ctx.fill();
+      ctx.save(); ctx.globalAlpha = behind ? 0.8 : 1;                 // predtým 0,42 a pozadie 0,5: na pestrej scéne sa nedalo čítať (audit 2. 10.)
+      rrect(ctx, L.x, L.y, L.w, L.h, 4); ctx.fillStyle = 'rgba(8,8,22,0.72)'; ctx.fill();
       ctx.strokeStyle = 'rgba(255,210,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
       tri(ctx, L.x + 5, L.y + 9, T.panel, '#ffd200');
       api.text(L.head, L.x + 14, L.y + 9, 7, 'left', '#ffd200');
