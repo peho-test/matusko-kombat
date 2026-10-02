@@ -1683,7 +1683,7 @@ function drawSelect() {
   }
   if (game.rockyMsg > 0) text('ROCKY EŠTE TRÉNUJE…', W / 2, 252, 12, 'center', '#ffcf6e');
   else text(game.mode === 1 ? '← → výber   ÚDER/ENTER potvrdiť' : 'Každý hráč si vyberie svojimi klávesmi', W / 2, 252, 9, 'center', '#888');
-  if (inputKind(0) === 'touch') {                         // mobil: späť do menu bez klávesu Esc
+  {                                                       // späť do menu: vždy (ťuk aj myš); klávesnica má aj Esc (Peťo: po šípke tlačidlo zmizlo)
     const b = SELECT_BACK; ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(b.x, b.y, b.w, b.h);
     text('◀ MENU', b.x + b.w / 2, b.y + 13, 10, 'center', '#ffd200');
   }
@@ -1777,12 +1777,12 @@ function drawResult() {
   const bd = birthday();
   if (bd) { bigText('VŠETKO NAJLEPŠIE', W / 2, 152, 30); bigText(`K ${bd.age}. NARODENINÁM, ${bd.name}!`, W / 2, 184, 22); }
   else bigText('ODVETA?', W / 2, 170, 34);
-  if (inputKind(0) === 'touch') for (const b of Object.values(RESULT_BTNS)) {      // na mobile tlačidlá (klávesnica: ÚDER/ENTER, ESC)
+  for (const b of Object.values(RESULT_BTNS)) {          // tlačidlá vždy (ťuk aj myš); klávesnica: ÚDER/ENTER, ESC
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(b.x, b.y, b.w, b.h);
     ctx.strokeStyle = 'rgba(255,210,0,0.8)'; ctx.lineWidth = 1.5; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
     text(b.label, b.x + b.w / 2, b.y + 16, 11, 'center', '#ffd200');
   }
-  else if (sceneT % 60 < 40) text('ÚDER / ENTER = ďalší zápas     ESC = menu', W / 2, 250, 9, 'center', '#ccc');
+  if (inputKind(0) !== 'touch') text('ÚDER / ENTER = ďalší zápas     ESC = menu', W / 2, 267, 7, 'center', '#aaa');
 }
 function victoryRoyale(x, y) {
   ctx.font = 'bold 30px Impact, "Arial Black", sans-serif'; ctx.textAlign = 'center'; ctx.lineJoin = 'round';
