@@ -1472,7 +1472,7 @@ function drawFight() {
 // ===================================================================== scény
 let scene = 'loading', sceneT = 0;
 const toast = { text: '', t: 0 };
-function showToast(t) { toast.text = t; toast.t = 100; }
+function showToast(t, dur = 100) { toast.text = t; toast.t = dur; }
 const confetti = [];
 function setScene(s) { if (scene === 'title' && s !== 'title') stopTitleVoice(); scene = s; sceneT = 0; if (s === 'select') { game.locked = [false, false]; game.picks = [null, null]; game.vsAt = 0; } if (s === 'result') music('result'); }
 
@@ -1864,7 +1864,8 @@ function draw() {
     default: if (SCENES[scene] && SCENES[scene].draw) SCENES[scene].draw();
   }
   if (F && scene === 'fight') callAll(hooks.drawHud, F);
-  if (toast.t > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, toast.t / 20); text(toast.text, W / 2, 62, 14, 'center', '#ffd200'); ctx.restore(); }
+  if (toast.t > 0) { const [l1, l2] = String(toast.text).split('\n');     // 2. riadok (menší): napr. prečo sa odomkla postava
+    ctx.save(); ctx.globalAlpha = Math.min(1, toast.t / 20); text(l1, W / 2, 62, 14, 'center', '#ffd200'); if (l2) text(l2, W / 2, 78, 9, 'center', '#fff1b8'); ctx.restore(); }
 }
 let last = performance.now(), acc = 0;
 function frame(now) {

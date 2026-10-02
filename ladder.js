@@ -139,8 +139,32 @@
       for (let xx = 0; xx < w; xx++) for (let y = 0; y < h; y++) { const p = y * w + xx; if (d[p * 4 + 3] >= 100) { if (hair[p]) top[xx] = y; break; } }
       canvas.__hairTop = top;
     }
+    function goldGi(d, w, h) {                // biele kimono → kovové zlato (tiene bronz, svetlá bledé zlato); koža, pás a vlasy ostanú
+      for (let i = 0; i < w * h * 4; i += 4) {
+        if (d[i + 3] < 100) continue;
+        const r = d[i], g = d[i + 1], b = d[i + 2], mx = Math.max(r, g, b), chroma = mx - Math.min(r, g, b), l = (mx + Math.min(r, g, b)) / 510;
+        if (chroma > 46 || l < 0.3) continue;      // pestrosť (nie HSL sýtosť): pri takmer bielej je HSL sýtosť zavádzajúca
+        const hi = Math.max(0, l - 0.85) / 0.15, o = hsl2rgb(42, 0.95 - 0.2 * hi, Math.min(0.68, 0.08 + 0.6 * l));
+        d[i] = o[0]; d[i + 1] = o[1]; d[i + 2] = o[2];
+      }
+    }
+    api.hooks.drawFront.push((stage, F) => {  // GOLDEN MATÚŠKO: pár trblietok okolo postavy (len vizuál)
+      if (!F || !F.fighters) return;
+      const ctx = api.ctx, fr = api.frame;
+      for (const f of F.fighters) {
+        if (!f || f.id !== 'zlaty' || f.state === 'baby' || f.state === 'fall' || f.state === 'down') continue;
+        for (let k = 0; k < 4; k++) {
+          const ph = (fr + k * 23) % 92, a = ph < 46 ? ph / 46 : (92 - ph) / 46;      // každá trblietka sa rozsvieti a zhasne
+          const seed = Math.floor((fr + k * 23) / 92) * 7 + k * 13;
+          const sx = f.x + ((seed * 37) % 70) - 35, sy = f.y - 30 - ((seed * 53) % 110), r = 2 + a * 3;
+          ctx.save(); ctx.globalAlpha = 0.85 * a; ctx.strokeStyle = '#fff6c4'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(sx - r, sy); ctx.lineTo(sx + r, sy); ctx.moveTo(sx, sy - r); ctx.lineTo(sx, sy + r); ctx.stroke();
+          ctx.fillStyle = '#ffd23a'; ctx.fillRect(sx - 1, sy - 1, 2, 2); ctx.restore();
+        }
+      }
+    });
     api.registerPalette('zlaty', (x, w, h) => {
-      const ok = pixels(x, w, h, (d, ww, hh) => goldHair(d, ww, hh, x.canvas));
+      const ok = pixels(x, w, h, (d, ww, hh) => { goldHair(d, ww, hh, x.canvas); goldGi(d, ww, hh); });
       if (!ok) filterTint(x, w, h, 'sepia(1) saturate(3.2) hue-rotate(-10deg) brightness(1.12)', 'color', '#ffc21a');   // celý zlatý
     });
 
@@ -159,7 +183,7 @@
       blurb: ['Matúško v oranžovom', 'kimone s čiernym pásom.', 'Heligónka hrá rovnako.'] });
     reg('zlaty', { name: 'GOLDEN MATÚŠKO', short: 'GOLDEN', sprites: 'matusko', palette: 'zlaty', alwaysSsj: true, spikes: true,
       gi: M0.gi || '#f2f2f2', giDark: M0.giDark || '#c9c9c9', belt: M0.belt || '#e67e22', hair: '#ffd23a', special: 'heligonka', specialName: 'HELIGÓNKA', finisher: 'folklority',
-      blurb: ['Super Saiyan navždy:', 'zlaté vlasy, zlatá aura', 'a silnejšie údery.'] });
+      blurb: ['Odomknutý za FLAWLESS:', 'dve kolá zápasu bez zásahu.', 'Navždy Super Saiyan.'] });
     function rockyReady() {
       const d = ROSTER.rocky; if (!d) return false;
       const sid = d.sprites || 'rocky';
@@ -180,10 +204,10 @@
     try { const raw = localStorage.getItem(UKEY); if (raw) for (const k of JSON.parse(raw)) unlocked.add(String(k)); } catch (e) { /* bez úložiska len v pamäti */ }
     for (const k of RETIRED_KEYS) unlocked.delete(k);      // staré CERVENY (Peťo ho má uložené) sa ignoruje, pri ďalšom uložení zmizne
     const UNLOCKS = {
-      ZLATY: { id: () => 'zlaty', label: () => fullName('zlaty') },                              // 2× flawless v jednom zápase
-      BOSS: { id: () => (ROSTER.boss ? 'boss' : null), label: () => fullName('boss') },          // zdolaná HORA (výhra nad bossom)
-      ROCKY: { id: () => (ROSTER.rocky ? 'rocky' : null), label: () => 'ROCKY' },                // kód ↓↓↓ + ♪ alebo porazený v HORE
-      IMPOSTOR: { id: () => (ROSTER[SECRET_ID] ? SECRET_ID : null), label: () => 'IMPOSTOR' },   // vyhratý tajný súboj
+      ZLATY: { id: () => 'zlaty', label: () => fullName('zlaty'), why: 'za FLAWLESS: dve kolá zápasu bez jediného zásahu' },
+      BOSS: { id: () => (ROSTER.boss ? 'boss' : null), label: () => fullName('boss'), why: 'za zdolanie HORY' },
+      ROCKY: { id: () => (ROSTER.rocky ? 'rocky' : null), label: () => 'ROCKY', why: 'tajný kód alebo porazený v HORE' },
+      IMPOSTOR: { id: () => (ROSTER[SECRET_ID] ? SECRET_ID : null), label: () => 'IMPOSTOR', why: 'za výhru v tajnom súboji' },
     };
     // porazený súper z HORY sa stane hrateľným; mená berie z ROSTER (enemies.js a ďalšie moduly ich môžu premenovať)
     const BEAT_UNLOCK = ['ninja_fire', 'ninja_ice', 'ninja_shadow', 'vodnik', 'bananac', 'blocky', 'glitch', 'rocky'];
@@ -201,7 +225,7 @@
     function unlock(k, quiet) {
       if (!UNLOCKS[k] || unlocked.has(k)) return false;
       unlocked.add(k); saveUnlocks(); applyUnlocks();
-      if (!quiet) queueToast('NOVÁ POSTAVA: ' + UNLOCKS[k].label() + '!');
+      if (!quiet) queueToast('NOVÁ POSTAVA: ' + UNLOCKS[k].label() + '!' + (UNLOCKS[k].why ? '\n' + UNLOCKS[k].why : ''));   // 2. riadok: prečo (Peťo)
       return true;
     }
     const toastQ = []; let toastWait = 0;
@@ -505,7 +529,7 @@
       prevScene = sc;
       if (sc === 'select' || entered) fitSelectNames(sc === 'select');
       if (toastWait > 0) toastWait--;
-      else if (toastQ.length) { api.showToast(toastQ.shift()); api.sfx('confirm'); toastWait = 115; }
+      else if (toastQ.length) { const t = toastQ.shift(), long = t.includes('\n'); api.showToast(t, long ? 200 : 100); api.sfx('confirm'); toastWait = long ? 215 : 115; }
       if (sc === 'title' && entered) {
         if (L.active || L.pending) endLadder();
         restoreLevel();
