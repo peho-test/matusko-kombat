@@ -1383,7 +1383,8 @@ window.MK_ASSETS = {
   {
    "id": "potok",
    "name": "FOREST STREAM",
-   "src": "assets/stages/potok.png"
+   "src": "assets/stages/potok.png",
+   "video": "assets/stages/potok.mp4"
   },
   {
    "id": "dojo",

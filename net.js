@@ -237,7 +237,9 @@
         bigText('HRA CEZ SIEŤ', W / 2, 40, 28);
         text('Každý hrá na svojom mobile alebo počítači. Najlepšie na rovnakej Wi-Fi.', W / 2, 60, 8, 'center', '#9fc4e8');
         if (L.mode === 'menu') {
-          ITEMS.forEach((it, i) => text((i === L.idx ? '▶ ' : '  ') + it, W / 2 - 70, 126 + i * 22, 13, 'left', i === L.idx ? '#ffd200' : '#cfd8e8'));
+          ITEMS.forEach((it, i) => { const on = i === L.idx;            // šípka pred riadkom, riadky sa neposúvajú
+            if (on) text('▶', W / 2 - 70, 126 + i * 22, 13, 'left', '#ffd200');
+            text(it, W / 2 - 70 + 17, 126 + i * 22, 13, 'left', on ? '#ffd200' : '#cfd8e8'); });
           text('Jeden vytvorí zápas a povie kód, druhý ho zadá.', W / 2, 220, 9, 'center', '#8fa5bf');
         } else if (L.mode === 'host-wait') {
           text('KÓD ZÁPASU', W / 2, 98, 12, 'center', '#cfd8e8');

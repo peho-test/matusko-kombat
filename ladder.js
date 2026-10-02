@@ -864,8 +864,10 @@
         face(L.player, 56, 70, 72, 90, '#3fa9ff', true);
         text(nameOf(L.player), 92, 176, 10, 'center', '#3fa9ff');
         if (st) { face(st.id, W - 128, 70, 72, 90, '#ffd200'); text(nameOf(st.id) + ' VYHRAL', W - 92, 176, 9, 'center', '#ffd200'); }
-        text((C.sel === 0 ? '▶ ' : '   ') + 'ÁNO, ZNOVA!', W / 2 - 60, 212, 14, 'center', C.sel === 0 ? '#ffd200' : '#999');
-        text((C.sel === 1 ? '▶ ' : '   ') + 'NIE', W / 2 + 80, 212, 14, 'center', C.sel === 1 ? '#ffd200' : '#999');
+        for (const [i, lb, cx] of [[0, 'ÁNO, ZNOVA!', W / 2 - 60], [1, 'NIE', W / 2 + 80]]) {   // šípka pred textom, text sa neposúva
+          text(lb, cx, 212, 14, 'center', C.sel === i ? '#ffd200' : '#999');
+          if (C.sel === i) { api.ctx.font = 'bold 14px "Trebuchet MS", "Arial Black", Arial, sans-serif'; text('▶', cx - api.ctx.measureText(lb).width / 2 - 6, 212, 14, 'right', '#ffd200'); }
+        }
         text('Pokračovať môžeš koľkokrát chceš. Súper ostáva ten istý.', W / 2, 238, 8, 'center', '#ccc');
         if (t % 60 < 42) text(touchUI() ? 'ťukni na ÁNO alebo NIE' : 'ÚDER / ENTER = potvrdiť     ← → = výber', W / 2, 260, 8, 'center', '#888');
       },

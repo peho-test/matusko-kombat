@@ -1553,7 +1553,9 @@ function drawTitle() {
   const L = menuLayout(), fs = MENU.length > 4 ? 10 : 11, cur = curMenu(), y0 = menuItemsY0();
   if (game.submenu) text(MENU.find(it => it.sub === game.submenu).label, W / 2, L.y0, 11, 'center', '#ff9f1a');
   cur.forEach((it, i) => { const lb = typeof it.label === 'function' ? it.label() : it.label;
-    text((i === game.menuIdx ? '▶ ' : '  ') + lb, W / 2 - (game.submenu ? 70 : 44), y0 + i * L.step, fs, 'left', i === game.menuIdx ? '#ffd200' : '#bbb'); });
+    const x = W / 2 - (game.submenu ? 70 : 44), y = y0 + i * L.step, on = i === game.menuIdx;   // šípka pred riadkom, riadky sa neposúvajú (Peťo)
+    if (on) text('▶', x, y, fs, 'left', '#ffd200');
+    text(lb, x + fs + 3, y, fs, 'left', on ? '#ffd200' : '#bbb'); });
   const bd = birthday(), hint = cur[game.menuIdx] && cur[game.menuIdx].hint;
   if (game.msgT > 0) text(game.msg, W / 2, 264, 9, 'center', '#ffcf6e');
   else if (!audioUnlocked && (padUsed || sceneT > 240)) text('ZVUK: klikni myšou alebo stlač kláves', W / 2, 264, 9, 'center', '#9fd8ff');
