@@ -1673,7 +1673,7 @@ function updateSelect() {
     if (src.right) { game.cursor[p] = (game.cursor[p] + 1) % n; game.tapArm[p] = -1; sfx('select'); }
     if ((src.ok || tapOk[p]) && sceneT > 15) {
       const id = ORDER[game.cursor[p]];
-      if (game.locked[1 - p] && game.picks[1 - p] === id) { sfx('block'); showToast(ROSTER[id].name + ' UŽ MÁ HRÁČ ' + (2 - p)); }   // bratia proti sebe, nie zrkadlo
+      if (game.locked[1 - p] && game.picks[1 - p] === id) { sfx('block'); showToast(selName(id) + ' UŽ MÁ HRÁČ ' + (2 - p)); }   // bratia proti sebe, nie zrkadlo
       else { game.locked[p] = true; game.picks[p] = id; sfx('confirm'); }
     }
   }
@@ -1699,6 +1699,8 @@ function portrait(id, x, y, w, h, hl) {
   if (hl) { ctx.strokeStyle = hl; ctx.lineWidth = 3; ctx.strokeRect(x - 1, y - 1, w + 2, h + 2); }
 }
 const SELECT_BACK = { x: 6, y: 6, w: 64, h: 18 };
+const SEL_NAME = { matusko: 'MATÚŠ', zlaty: 'GOLDEN MATÚŠ' };                       // Peťo 2. 10.: pri výbere bratia rovnocenne MATÚŠ a ŠIMON, nie jeden zdrobnenina
+const selName = id => SEL_NAME[id] || ROSTER[id].name;
 function drawSelect() {
   ctx.fillStyle = '#0d0b18'; ctx.fillRect(0, 0, W, H);
   bigText('VYBER SI BOJOVNÍKA', W / 2, 32, 24);
@@ -1709,7 +1711,7 @@ function drawSelect() {
     const hl = game.cursor[0] === i ? '#3fa9ff' : (game.mode === 2 && game.cursor[1] === i ? '#ff4040' : null);
     portrait(id, x, y, pw, ph, hl);
     if (game.mode === 2 && game.cursor[0] === i && game.cursor[1] === i) { ctx.strokeStyle = '#ff4040'; ctx.lineWidth = 3; ctx.strokeRect(x + 3, y + 3, pw - 6, ph - 6); }
-    text(ROSTER[id].name, x + pw / 2, y + ph + (grid ? 11 : 16), grid ? 7 : pw < 80 ? 9 : 12, 'center', '#ffd200');
+    text(selName(id), x + pw / 2, y + ph + (grid ? 11 : 16), grid ? 7 : pw < 80 ? 9 : 12, 'center', '#ffd200');
     if (pw >= 80) (ROSTER[id].blurb || []).forEach((l, k) => text(l, x + pw / 2, y + ph + 30 + k * 11, 7, 'center', '#ccc'));
     if (game.cursor[0] === i) text(game.locked[0] ? '1P ✔' : '1P', x + 12, y + 14, 10, 'center', '#3fa9ff');
     if (game.mode === 2 && game.cursor[1] === i) text(game.locked[1] ? '2P ✔' : '2P', x + pw - 12, y + 14, 10, 'center', '#ff4040');
@@ -1750,8 +1752,8 @@ function drawVS() {
   const k = Math.min(1, sceneT / 20);
   portrait(game.picks[0], Math.round(-120 + 150 * k), 40, 140, 170, '#3fa9ff');
   portrait(game.picks[1], Math.round(W + 20 - 190 * k), 40, 140, 170, '#ff4040');
-  text(ROSTER[game.picks[0]].name, 100, 228, 16, 'center', '#3fa9ff');
-  text(ROSTER[game.picks[1]].name, W - 100, 228, 16, 'center', '#ff4040');
+  text(selName(game.picks[0]), 100, 228, 16, 'center', '#3fa9ff');
+  text(selName(game.picks[1]), W - 100, 228, 16, 'center', '#ff4040');
   text(legend(0, game.picks[0]), 100, 242, 7, 'center', '#cfe6ff');
   text(legend(1, game.picks[1]), W - 100, 242, 7, 'center', '#ffd0d0');
   if (sceneT > 20) bigText('VS', W / 2, 140, 54);
@@ -1943,7 +1945,7 @@ const api = {
   addMenuItem(item, index = MENU.length) { MENU.splice(index, 0, item); },
   animFallback(state, anim) { ANIM_FALLBACK[state] = anim; },
   MENU, SUBMENU, birthday, RESULT_BTNS, SELECT_BACK, PAUSE_BTNS, inBtn, MUSIC_POOL, ANIM_FALLBACK, NET, BUTTONS_LIST: BUTTONS,
-  setFight(obj) { F = obj; }, setSceneRaw(name, t) { scene = name; sceneT = t; }, selPos,
+  setFight(obj) { F = obj; }, setSceneRaw(name, t) { scene = name; sceneT = t; }, selPos, selName,
   get toast() { return toast; },
 };
 for (const m of MODULES) { try { m.init(api); } catch (e) { console.error('Modul ' + m.name, e); } }

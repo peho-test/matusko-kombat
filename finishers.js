@@ -168,8 +168,10 @@
       return api.keyHint(idx, btn).trim() || TOUCH_WORD[btn];     // P1 písmená (S, S, R), P2 šípky a K L I O
     }
     // model nápovedy (kreslenie, ťuk aj testy): riadky so zakončením, dostupnosťou a tlačidlami v smere víťaza
+    const OPT = { hintsAlways: false };   // Peťo 2. 10.: panel komb a ťukacie skratky len v TRÉNINGU; inde FINISH HIM len ručným kombom (testy môžu zapnúť)
     function hintModel(F) {
       if (!F || F.phase !== 'finish' || F.paused) return null;
+      if (!F.trening && !OPT.hintsAlways) return null;            // mimo tréningu: žiadny panel, žiadne ťukacie plochy ani ich obsluha
       const me = localWinner(F); if (!me) return null;
       const mode = api.inputKind(me.idx); if (mode === 'cpu') return null;
       const w = F.fighters[F.winner], L = F.fighters[F.loser], avail = availableKinds(F, L);
@@ -301,7 +303,10 @@
     }
     api.hooks.drawHud.push((F) => {
       const m = hintModel(F);
-      if (!m) return;
+      if (!m) {                                   // mimo TRÉNINGU: bez panela a skratiek, ale človek vidí, koľko času má na ručné kombo (Codex r9)
+        if (F && F.phase === 'finish' && !F.paused && !F.trening && localWinner(F) && api.inputKind(localWinner(F).idx) !== 'cpu') timeBar(F, api.W / 2 - 60, 92, 120);
+        return;
+      }
       if (m.mode === 'touch') drawTapButtons(F, m); else drawPanel(F, m);
     });
 
@@ -349,7 +354,7 @@
 
     // pre testy a ostatné moduly
     api.finishers = {
-      FINISH_HUMAN, TAP_GAP, hintModel, tapRects, bookList,
+      FINISH_HUMAN, TAP_GAP, hintModel, tapRects, bookList, opt: OPT,
       combos: () => COMBOS.filter(c => ready(c.kind)).map(c => ({ kind: c.kind, seq: c.seq.slice(), arena: c.arena || null })),
       get tapQueue() { return tapQ; },
     };
