@@ -10,6 +10,12 @@
   body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
   canvas { display: block; width: min(100vw, 177.78vh); height: min(56.25vw, 100vh);
            image-rendering: pixelated; image-rendering: crisp-edges; background: var(--bg); }
+  /* Chrome na Androide: vh = výška BEZ lišty s adresou, takže pri zobrazenej lište bola hra vyššia ako viditeľná plocha a orezaná hore aj dole
+     (Peťove S25 screenshoty 2. 10.). dvh = skutočne viditeľná výška. */
+  @supports (height: 100dvh) {
+    html, body { height: 100dvh; }
+    canvas { width: min(100vw, 177.78dvh); height: min(56.25vw, 100dvh); }
+  }
   #touch { position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
   #touch[hidden] { display: none; }
   #touch button { pointer-events: auto; position: absolute; border: 2px solid rgba(255,255,255,0.35);
@@ -40,14 +46,14 @@
 <meta name="theme-color" content="#000000">
 <link rel="apple-touch-icon" href="assets/ui/icon192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<script>window.MK_BUILD = "v 07d1f7 \u00b7 2. 10. 21:50";</script>
+<script>window.MK_BUILD = "v 8159f5 \u00b7 3. 10. 00:43";</script>
 </head>
 <body>
 <canvas id="game" width="480" height="270"></canvas>
 <div id="touch" hidden>
   <div id="stick" aria-label="Pohyb, skok a blok"><span class="mk up">▲</span><span class="mk lt">◀</span><span class="mk rt">▶</span><span class="mk dn">BLOK</span><div id="knob"></div></div>
   <button data-b="punch">ÚDER</button><button data-b="kick">KOP</button><button data-b="kiai">KIAI</button><button data-b="special">♪</button>
-  <button data-b="start">START</button>
+  <button data-b="start">MENU</button>
 </div>
 <button id="musicBtn" type="button" tabindex="-1" aria-label="Hudba zapnúť alebo vypnúť" aria-pressed="true">♫</button>
 <div id="rotate">Otoč telefón na šírku 🔄</div>

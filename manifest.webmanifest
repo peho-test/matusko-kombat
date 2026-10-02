@@ -3,7 +3,7 @@
  "short_name": "MK XII",
  "start_url": "./",
  "scope": "./",
- "display": "fullscreen",
+ "display": "standalone",
  "orientation": "landscape",
  "background_color": "#000000",
  "theme_color": "#000000",

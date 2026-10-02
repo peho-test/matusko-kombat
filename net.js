@@ -93,7 +93,8 @@
       const r = api.ctls[1].remote; if (!r) return;
       r.held = d.h || {};
       for (const b of d.p || []) r.hits.add(b);
-      if (Array.isArray(d.tp)) r.tap = d.tp;                          // ťuk hosťa na portrét (výber postavy dotykom), spracuje game.js updateSelect
+      if (Array.isArray(d.tp)) r.tap = d.tp;
+      r.portrait = !!d.por;                                           // hosť má telefón na výšku → hostiteľ pozastaví zápas obom                          // ťuk hosťa na portrét (výber postavy dotykom), spracuje game.js updateSelect
     }
     function pack() {
       const F = api.fight, g = api.game;
@@ -186,7 +187,8 @@
       const tp = api.menu.tapPos;                                     // dotykový hosť: ťuk na portrét pošle hostiteľovi (prvý označí, druhý potvrdí)
       const F = api.fight, paused = api.scene === 'fight' && F && F.paused;   // aj ťuk na POKRAČOVAŤ v pauze hostiteľa
       const tap = tp && ((api.scene === 'select' && !api.inBtn(tp, api.SELECT_BACK)) || (paused && api.inBtn(tp, api.PAUSE_BTNS.cont))) ? [Math.round(tp.x), Math.round(tp.y)] : null;
-      try { L.conn.send(tap ? { t: 'i', h: c.held, p: hits, tp: tap } : { t: 'i', h: c.held, p: hits }); } catch (e) { lost(); }
+      const pkt = { t: 'i', h: c.held, p: hits }; if (tap) pkt.tp = tap; if (api.isPortrait()) pkt.por = 1;
+      try { L.conn.send(pkt); } catch (e) { lost(); }
     };
 
     // ---------------------------------------------------------------- lobby (scéna 'net')

@@ -29,7 +29,7 @@
     // ================================================================ postava
     const own = !!(FA.vodnik && FA.vodnik.anims && FA.vodnik.anims.idle);
     const DEF = {
-      p7: 'vodnik', name: 'VODNÍK', special: 'heligonka', specialName: 'BUBBLE', finisher: 'babality', moveSpecial: null,
+      p7: 'vodnik', name: 'WATER GOBLIN', special: 'heligonka', specialName: 'BUBBLE', finisher: 'babality', moveSpecial: null,
       gi: '#2f8a3c', giDark: '#1d5a27', belt: '#d9b13a', hair: '#2b4d2a',
       blurb: ['Vodník z mlynského náhonu.', 'BUBLINA, HRNČEK S DUŠOU', 'a MLÁKA. Pri vode je doma.'],
       ladderStage: 'potok',                                   // v rebríčku najradšej doma pri vode (ladder.js)
@@ -307,7 +307,7 @@
       const V = st(F); V.proj.length = 0; V.pools.length = 0; V.souls.length = 0; V.texts.length = 0; V.air = [false, false];
       for (const f of F.fighters) { f.p7bub = null; if (isV(f)) { f.p7v = null; vs(f); } }
       const n = F.fighters.filter(isV).length;
-      if (n && home(F)) api.banner(n > 1 ? 'VODNÍCI SÚ DOMA!' : 'VODNÍK JE DOMA!', 130, 20, 162, true);
+      if (n && home(F)) api.banner(n > 1 ? 'WATER GOBLINS ARE HOME!' : 'WATER GOBLIN IS HOME!', 130, 20, 162, true);   // Peťo 2. 10.: anglické mená neosobných postáv
     });
 
     // ================================================================ počítač: schopnosti s rozvahou
@@ -468,7 +468,7 @@
         meter(i, 'MLÁKA', 1 - (g.cdP || 0) / cool(F, POOL_CD), WATER.mid, 1, 1);
         if (home(F)) api.text('DOMA +25 %', i === 0 ? 12 + 132 : W - 12 - 132, 61, 7, i === 0 ? 'left' : 'right', WATER.light);
         ctx.restore();
-        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && api.inputKind(i) !== 'cpu')
+        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && !['cpu', 'remote'].includes(api.inputKind(i)))
           api.text('BUBBLE: ♪ · SOUL CUP: ↓ VPRED ÚDER · PUDDLE: ↓ ↓ KOP', i === 0 ? 8 : W - 30, 254, 7, i === 0 ? 'left' : 'right', '#b8f0c0');
       });
     });

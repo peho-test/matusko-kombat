@@ -798,7 +798,7 @@
         ctx.beginPath(); ctx.arc(bx, by, 4.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.fillStyle = ok ? '#c9d0da' : '#444'; ctx.fillRect(bx - 6, by, 12, 3);
         api.text('MEETING', bx + (right ? -10 : 10), by + 3, 7, right ? 'right' : 'left', ok ? '#ff8a80' : '#777');
-        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && api.inputKind(side) !== 'cpu') {
+        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && !['cpu', 'remote'].includes(api.inputKind(side))) {
           const k = (b, word) => api.keyHint(side, b).trim() || word;
           api.text(`VENT = ${k('special', '♪')} · SABOTAGE = ${k('down', '↓')} VPRED ${k('special', '♪')} · MEETING = VZAD VZAD ${k('special', '♪')}`,
             side === 0 ? 8 : W - 30, 254, 7, side === 0 ? 'left' : 'right', '#ffb3ad');

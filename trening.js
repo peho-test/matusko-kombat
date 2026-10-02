@@ -301,7 +301,7 @@
         const sel = i === T.pauseIdx;
         api.text((sel ? '▶ ' : '') + it.label, W / 2, P.row0 + i * P.step, 10, 'center', it.off ? '#666666' : sel ? '#ffd200' : '#cccccc');
       });
-      const hint = col === 3 ? 'ťukni na položku · START = pokračovať' : col === 2 ? '▲ ▼ vybrať · □ / ✕ potvrdiť · START = pokračovať'
+      const hint = col === 3 ? 'ťukni na položku · ▶ HRAŤ = pokračovať' : col === 2 ? '▲ ▼ vybrať · □ / ✕ potvrdiť · START = pokračovať'
         : '↑ ↓ vybrať · ÚDER / ENTER potvrdiť · ESC = pokračovať · H hudba · M zvuk';
       api.text(hint, W / 2, P.y + P.h - 7, 7, 'center', '#a7a7c0');
     }

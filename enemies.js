@@ -604,7 +604,7 @@
     hooks.drawHud.push(F => {            // nápoveda kombá v 1. kole pre človeka, ktorý hrá za nepriateľa
       if (F.round !== 1 || !(F.phase === 'intro' || (F.phase === 'fight' && F.t < 240))) return;
       F.fighters.forEach((f, i) => {
-        if (!mine(f) || api.inputKind(i) === 'cpu') return;
+        if (!mine(f) || ['cpu', 'remote'].includes(api.inputKind(i))) return;
         api.text(MOVES_TXT[f.def.enKind], i === 0 ? 8 : W - 30, 254, 7, i === 0 ? 'left' : 'right', '#ffe08a');   // vpravo mimo tlačidla hudby
       });
     });

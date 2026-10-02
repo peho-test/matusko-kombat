@@ -36,7 +36,7 @@
     // ================================================================ postava
     const own = !!(FA.bananac && FA.bananac.anims && FA.bananac.anims.idle);
     const DEF = {
-      p14: 'bananac', name: 'BANÁNÁČ', short: 'BANÁNÁČ', special: 'heligonka', specialName: 'BUILD', finisher: 'friendship', moveSpecial: null,
+      p14: 'bananac', name: 'BANÁNÁČ', short: 'BANÁNÁČ', flipSpin: false,   /* Peťo 2. 10.: salto bez točenia celého obrázka (nemá snímky salta) */ special: 'heligonka', specialName: 'BUILD', finisher: 'friendship', moveSpecial: null,
       gi: '#ffd93b', giDark: '#d9a21a', belt: '#5a3a14', hair: '#6b4a1e',              // farby kreslených náhrad (portrét, bábätko)
       blurb: ['Chlapík v banánovom kostýme.', 'Postaví stenu, zatancuje', 'a hodí piňatu-lamu.'],
       ...(own ? { height: 155 } : { sprites: 'simon', palette: 'bananac', height: 150 }),
@@ -722,7 +722,7 @@
         meter(i, 'EMOTE', 1 - (g.cdE || 0) / EMOTE_CD, '#ff9ff0', 2);
         meter(i, 'LLAMA', g.llama ? 0 : 1, '#7dff6a', 1, 1);
         ctx.restore();
-        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && api.inputKind(i) !== 'cpu')
+        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && !['cpu', 'remote'].includes(api.inputKind(i)))
           api.text('BUILD: ♪ · EMOTE: ↓ VPRED ♪ · LLAMA: VZAD VZAD ♪', i === 0 ? 8 : W - 30, 254, 7, i === 0 ? 'left' : 'right', '#ffe98a');
       });
     });

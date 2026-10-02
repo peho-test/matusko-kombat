@@ -22,6 +22,7 @@
     const CREDITS = [
       ['', '@LOGO', '* hra k 12. narodeninám Matúška', '3. októbra 2026'],
       ['', '# VŠETKO NAJLEPŠIE, MATÚŠKO!', '* Nech ti KIAI vydrží celý rok!'],
+      ['DARČEK K NARODENINÁM', 'Hra pre Matúška', 'od Peťa, Mišky, Adamka a Alžbetky'],   // Peťo 2. 10.: venovanie, bez „s láskou“
       ['BOJOVNÍCI', 'MATÚŠKO | karate · heligónka · KIAI', 'ŠIMON | karate · husle · KIAI', 'ROCKY | zlatý retríver · majster olizovania', '@BOJOVNICI'],
       ['PORAZENÍ SÚPERI', '@SUPERI'],
       ['ARÉNY', '@ARENY'],
@@ -36,7 +37,7 @@
     ];
     // poradie bojovníkov (boss vždy posledný, nové postavy pred ním) a náhradný zoznam, keby ROSTER nebol k dispozícii
     const FIGHTER_ORDER = ['matusko', 'simon', 'rocky', 'ninja_fire', 'ninja_ice', 'ninja_shadow', 'vodnik', 'glitch', 'impostor', 'bananac', 'blocky'];
-    const FIGHTERS_FALLBACK = ['MATÚŠKO', 'ŠIMON', 'ROCKY', 'FIRE NINJA', 'ICE NINJA', 'SHADOW NINJA', 'VODNÍK', 'GLITCH', 'IMPOSTOR', 'BANÁNÁČ', 'BLOCKY', 'MASTER STORM'];
+    const FIGHTERS_FALLBACK = ['MATÚŠKO', 'ŠIMON', 'ROCKY', 'FIRE NINJA', 'ICE NINJA', 'SHADOW NINJA', 'WATER GOBLIN', 'GLITCH', 'IMPOSTOR', 'BANÁNÁČ', 'BLOCKY', 'MASTER STORM'];
 
     const SPEED = 0.5;          // px za snímok: 60 snímok/s → 30 px/s, posun o 1 px každý druhý snímok (rovnomerne, bez trhania)
     const SKIP_AFTER = 30;      // 0,5 s: stlačenie, ktoré titulky spustilo (alebo tesne po ňom), ich hneď nezruší

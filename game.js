@@ -45,14 +45,18 @@ const ctx = cv.getContext('2d');
 // Vnútorné rozlíšenie plátna = RES × 480×270 podľa displeja: na veľkej obrazovke ostré texty a hladko zväčšené postavy namiesto kociek.
 // Logika aj kreslenie ostávajú v súradniciach 480×270 (draw() nastaví mierku). ?res=1 = pôvodný pixelový vzhľad; automatické testy (navigator.webdriver) kreslia 1:1.
 let RES = 1;
+// Peťo 2. 10. večer: celá grafika jednotne pixelová ako MK2 (postavy, bábätká, arény, texty); na veľkom PC jemnejšie 2× pixely, nie hladké HD.
+// ?smooth=1 = predošlý hladký vzhľad (porovnanie / návrat)
+const PIXEL = !/[?&]smooth=1/.test(location.search);
 function fitRes() {
   const forced = +(new URLSearchParams(location.search).get('res') || window.MK_RES || 0);
   const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  const cap = matchMedia('(pointer: coarse)').matches ? 2 : 3;
+  const cap = matchMedia('(pointer: coarse)').matches ? (PIXEL ? 1 : 2) : (PIXEL ? 2 : 3);   // mobil 1× pixely, PC 2× pixely
   const k = forced ? clamp(Math.round(forced), 1, 4) : navigator.webdriver ? 1 : clamp(Math.round((r.width || 480) * dpr / 480), 1, cap);
-  if (k !== RES || cv.width !== 480 * k) { RES = k; cv.width = 480 * k; cv.height = 270 * k; cv.style.imageRendering = k > 1 ? 'auto' : ''; }
+  if (k !== RES || cv.width !== 480 * k) { RES = k; cv.width = 480 * k; cv.height = 270 * k; cv.style.imageRendering = k > 1 && !PIXEL ? 'auto' : ''; }   // PIXEL: plátno sa vždy zväčšuje ostro (CSS pixelated)
 }
 addEventListener('resize', () => fitRes());
+if (window.visualViewport) visualViewport.addEventListener('resize', () => fitRes());   // lišta prehliadača sa ukáže / skryje
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -108,7 +112,20 @@ function loadImages(done) {
 const SND = {};
 for (const [k, src] of Object.entries(A.sounds || {})) {
   const a = new Audio(); a.preload = 'auto'; a.src = src;
-  a.addEventListener('error', () => { if (SND[k] === a) delete SND[k]; });   // chýbajúci súbor → syntetická náhrada
+  let tries = 0;                     // zrušené načítanie (reload počas načítavania zvukov, výpadok siete) skúsiť ešte 2×, až potom náhrada
+  a.addEventListener('error', () => {
+    if (SND[k] !== a) return;
+    if (tries++ < 2) {
+      setTimeout(() => {
+        if (SND[k] !== a || !a.error) return;
+        // hudba, ktorá mala hrať počas výpadku, sa po úspešnom načítaní spustí sama (Codex r12: inak ticho až do zmeny skladby)
+        a.addEventListener('canplay', () => { if (musicEl === a && audioUnlocked && !muted && musicOn && a.paused) a.play().catch(() => {}); }, { once: true });
+        a.load();
+      }, 700 * tries + Math.random() * 900);
+      return;
+    }
+    delete SND[k];                   // chýbajúci súbor → syntetická náhrada
+  });
   SND[k] = a;
 }
 
@@ -175,7 +192,7 @@ function synth(name, vol) {
 }
 const SAY_TEXT = {
   title: 'Matúš K.O. Kombat!', round1: 'Round one', round2: 'Round two', round3: 'Final round', fight: 'Fight!',
-  finish: 'Finish him!', matusko_wins: 'Matúško wins!', simon_wins: 'Šimon wins!', flawless: 'Flawless victory!',
+  finish: 'Finish him!', matusko_wins: 'Matúško wins!', simon_wins: 'Šimonko wins!', flawless: 'Flawless victory!',
   rockyality: 'Rockyality!', babality: 'Babality!', folklority: 'Folklority!', friendship: 'Friendship... friendship?',
   birthday: 'Všetko najlepšie k dvanástym narodeninám, Matúško!', draw: 'Draw!',
   ssj_matusko: 'Super Matúško!', ssj_simon: 'Super Šimon!', creeperality: 'Creeperality!', moreality: 'Moreality!', destiny: 'Choose your destiny!', futbality: 'Futbality!', goal: 'Goooal!',
@@ -274,8 +291,11 @@ cv.addEventListener('pointerdown', e => {          // ťuk / klik na plátno: po
   touchTap = true; unlockAudio();
 });
 let touchPad = null, touchShown = null;
+let startLabel = null;
 function syncTouch() {
   if (!touchPad) return;
+  const lb = F && F.paused ? '▶ HRAŤ' : 'MENU';                      // Peťo 2. 10.: „START“ v boji klame, otvára pauzu s MENU
+  if (lb !== startLabel) { const sb = touchPad.querySelector('[data-b="start"]'); if (sb) sb.textContent = lb; startLabel = lb; }
   const show = scene === 'fight';
   if (show === touchShown) return;
   touchShown = show; touchPad.hidden = !show;
@@ -404,20 +424,26 @@ function pollInput() {
 const PAD_SYM = { left: '◀', right: '▶', up: '▲', down: 'L1', punch: '□', kick: '✕', kiai: '○', special: '△' };
 const KEY_SYM = c => ({ ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' }[c] || c.replace('Key', ''));
 function inputKind(side) {
+  if (NET.role) {                            // sieť: na tomto zariadení hrá jedna strana (hostiteľ 0, hosť 1) lokálnym vstupom ctls[0]; druhá je súper na inom zariadení
+    if (side !== (NET.role === 'guest' ? 1 : 0)) return 'remote';
+    side = 0;
+  }
   if (game.mode === 1 && side === 1) return 'cpu';
   if (pads()[side] && padActive[side]) return 'pad';
   if (side === 0 && hasTouch && !keyboardSeen) return 'touch';
   return 'keys';
 }
+const localKind = () => inputKind(NET.role === 'guest' ? 1 : 0);   // čím hrá hráč na TOMTO zariadení (aj sieťový hosť, ktorý ovláda stranu 1)
 function keyHint(side, btn) {
   const k = inputKind(side);
   if (k === 'pad') return PAD_SYM[btn] + ' ';
-  if (k === 'keys') return KEY_SYM(KEYS[side === 0 && game.mode === 1 ? lastKeySet : side][btn][0]) + ' ';
-  return '';
+  if (k === 'keys') { const ks = NET.role ? 0 : side; return KEY_SYM(KEYS[ks === 0 && (game.mode === 1 || NET.role) ? lastKeySet : ks][btn][0]) + ' '; }   // v sieti hrá lokálny hráč ktoroukoľvek sadou (Codex r10)
+  return '';                                 // dotyk, počítač, súper v sieti: bez klávesy (Peťo: „prečo má Matúško I KIAI“)
 }
 function legend(side, id) {
   const k = inputKind(side), sp = ROSTER[id].specialName.toLowerCase();
   if (k === 'cpu') return 'POČÍTAČ';
+  if (k === 'remote') return '';
   if (k === 'touch') return 'tlačidlá na obrazovke · ♪ = ' + sp;
   const h = b => keyHint(side, b).trim();
   return `${h('down')} blok · ${h('punch')} úder · ${h('kick')} kop · ${h('kiai')} KIAI · ${h('special')} ${sp}`;
@@ -684,12 +710,13 @@ function updateProjectiles() {
 const PAUSE_BTNS = { cont: { x: W / 2 - 80, y: 160, w: 160, h: 28 }, menu: { x: W / 2 - 50, y: 200, w: 100, h: 20 } };   // dotyk: ťuk inde v pauze nič (omylom neodíde)
 const portraitMQ = typeof matchMedia === 'function' ? matchMedia('(orientation: portrait) and (pointer: coarse)') : null;
 function updateFight() {
-  if (keysHit.has('Escape') || keysHit.has('KeyP') || ((ctls[0].pressed.start || ctls[1].pressed.start) && keysHit.size === 0)) F.paused = !F.paused;
-  if (!F.paused && !NET.role && portraitMQ && portraitMQ.matches) F.paused = true;   // telefón otočený na výšku: zápas počká (Codex r6), pokračuje sa až tlačidlom
+  if (keysHit.has('Escape') || keysHit.has('KeyP') || ((ctls[0].pressed.start || ctls[1].pressed.start) && keysHit.size === 0)) { F.paused = !F.paused; if (!F.paused) F.pauseWhy = null; }
+  const portraitAny = (portraitMQ && portraitMQ.matches) || (NET.role === 'host' && ctls[1].remote && ctls[1].remote.portrait);   // hosť hlási svoju orientáciu (net.js)
+  if (!F.paused && NET.role !== 'guest' && portraitAny) { F.paused = true; F.pauseWhy = 'otoc'; }   // telefón na výšku: zápas počká OBOM, pokračuje sa až tlačidlom (Peťov test 2. 10.)
   if (F.paused) {
     const rt = NET.role === 'host' && ctls[1].remote && ctls[1].remote.tap;           // ťuk sieťového hosťa na POKRAČOVAŤ (net.js)
     if (keysHit.has('KeyQ') || (menu.tapPos && inBtn(menu.tapPos, PAUSE_BTNS.menu))) { F.paused = false; setScene('title'); music('title'); }
-    else if ((menu.tapPos && inBtn(menu.tapPos, PAUSE_BTNS.cont)) || (rt && inBtn({ x: rt[0], y: rt[1] }, PAUSE_BTNS.cont))) F.paused = false;
+    else if ((menu.tapPos && inBtn(menu.tapPos, PAUSE_BTNS.cont)) || (rt && inBtn({ x: rt[0], y: rt[1] }, PAUSE_BTNS.cont))) { F.paused = false; F.pauseWhy = null; }
     return;
   }
   F.t++;
@@ -914,15 +941,20 @@ function drawLogoTitle(x, y, size, t = 0) {
   const w1 = ctx.measureText('MATÚŠ').width, w3 = ctx.measureText('KOMBAT').width, gap = size * 0.22;
   const koSize = Math.round(size * 1.18);
   ctx.font = `italic 900 ${koSize}px "Arial Black", Impact, sans-serif`;
-  const wK = ctx.measureText('KO').width * 0.92;
+  const burstHW = 0.95 * koSize * 0.82 * 1.1;                       // vodorovný polomer výbuchu
+  // Peťo 2. 10.: KO nesmie zakryť Š v MATÚŠ → miesto pre KO aj s pulzom, natočením a čiernym obrysom
+  const wK = Math.max(ctx.measureText('KO').width * 1.04 + size * 0.22 - gap * 0.5, burstHW * 2 - size * 0.3);
   const x0 = x - (w1 + wK + gap + w3) / 2;
+  const kx = x0 + w1 + wK / 2 + gap * 0.25, ky = y - size * 0.36, pulse = 1 + Math.sin(t / 7) * 0.04;
+  const koFrame = () => { ctx.translate(kx, ky); ctx.rotate(-0.14); ctx.scale(pulse, pulse); };
+  ctx.save(); koFrame();
+  ctx.beginPath();                                       // komiksový výbuch za KO, kreslený pod písmenami (cípy nezakryjú Š ani K)
+  for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2, r = (i % 2 ? 0.55 : 0.95) * koSize * 0.82; ctx.lineTo(Math.cos(a) * r * 1.1, Math.sin(a) * r); }
+  ctx.closePath(); ctx.fillStyle = '#ffe23a'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#000'; ctx.stroke();
+  ctx.restore();
   bigText('MATÚŠ', x0 + w1 / 2, y, size);
   bigText('KOMBAT', x0 + w1 + wK + gap + w3 / 2, y, size);
-  const kx = x0 + w1 + wK / 2, ky = y - size * 0.36, pulse = 1 + Math.sin(t / 7) * 0.04;
-  ctx.translate(kx, ky); ctx.rotate(-0.14); ctx.scale(pulse, pulse);
-  ctx.beginPath();                                       // komiksový výbuch za KO
-  for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2, r = (i % 2 ? 0.55 : 0.95) * koSize * 0.82; ctx.lineTo(Math.cos(a) * r * 1.2, Math.sin(a) * r); }
-  ctx.closePath(); ctx.fillStyle = '#ffe23a'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#000'; ctx.stroke();
+  koFrame();
   ctx.font = `italic 900 ${koSize}px "Arial Black", Impact, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
   ctx.lineWidth = Math.max(4, koSize / 5); ctx.strokeStyle = '#000'; ctx.strokeText('KO', 0, 2);
@@ -1200,7 +1232,7 @@ function drawFighterRaw(f) {
   const anim = animFor(f);
   const flashing = f.flash > 0 && f.flash % 4 < 2;
   if (f.ssj && f.state !== 'baby') drawAura(f, anim, anim ? frameOf(f, anim) : 0);
-  if (anim && anim.name !== 'flip' && f.state === 'jump' && f.flip) {   // záloha bez videa salta: schúlená snímka sa točí
+  if (anim && anim.name !== 'flip' && f.state === 'jump' && f.flip && f.def.flipSpin !== false) {   // záloha bez videa salta: schúlená snímka sa točí (nie BANÁNÁČ)
     const a = anim.a, sc = (a.scale || 1) * (f.def.scale || 1), fr = a.tuck ?? Math.floor(a.frames / 2);
     const ang = Math.min(1, f.t / (2 * JUMP_V / GRAVITY)) * Math.PI * 2 * Math.sign(f.vx || f.flip);
     ctx.save(); ctx.translate(Math.round(f.x), Math.round(f.y - a.h * sc * 0.55)); ctx.rotate(ang); if (f.facing < 0) ctx.scale(-1, 1);
@@ -1253,6 +1285,11 @@ function drawKrojHat(f) {
   ctx.fillStyle = '#c0392b'; ctx.fillRect(x - 7, y - 11, 14, 2);
   ctx.fillStyle = '#c0392b'; ctx.fillRect(f.x - 8, f.y - 104, 16, 30);
 }
+function lowCopy(im, w, h) {               // raz hladko zmenšená kópia (1× hustota pixelov), potom sa kreslí ostro
+  const k = '__low' + w + 'x' + h;
+  if (!im[k]) { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, w, h); im[k] = c; }
+  return im[k];
+}
 function drawBaby(f) {
   const x = Math.round(f.x), y = f.y, bounce = Math.abs(Math.sin(f.t / 8)) * 4;
   const src = IMG[`img/baby_${f.id}`] || IMG[`img/baby_${f.sid}`];
@@ -1260,7 +1297,7 @@ function drawBaby(f) {
   if (im) {                              // batoľa v oblečení postavy ako v MK2 (Peťo); obrázky z assets/ui sú 2× → kresliť polovične (ostré na PC)
     const s = (typeof HTMLImageElement !== 'undefined' && src instanceof HTMLImageElement && src.height > 120) ? 0.5 : 1;
     const w = Math.round(im.width * s), h = Math.round(im.height * s);
-    ctx.drawImage(im, Math.round(x - w / 2), Math.round(y - h - bounce), w, h);
+    ctx.drawImage(PIXEL && s < 1 ? lowCopy(im, w, h) : im, Math.round(x - w / 2), Math.round(y - h - bounce), w, h);   // PIXEL: bábätko v hustote postáv
   }
   else {
     ctx.fillStyle = f.def.gi; ctx.fillRect(x - 12, y - 22 - bounce, 10, 16); ctx.fillRect(x + 2, y - 22 - bounce, 10, 16);
@@ -1322,8 +1359,14 @@ function pauseStageVideos(except) { for (const [id, v] of Object.entries(STAGE_V
 function drawStage(st) {
   pauseStageVideos(st.id);
   const vid = stageVideo(st);
+  if (vid && PIXEL) {                          // video aréna v rovnakej 1× hustote ako ostatné (Codex r11): snímka hladko do 480×270, potom ostro
+    const c = drawStage.low || (drawStage.low = Object.assign(document.createElement('canvas'), { width: W, height: H }));
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.drawImage(vid, 0, 0, W, H);
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(c, 0, 0, W, H); ctx.imageSmoothingEnabled = sm; return;
+  }
   if (vid) { ctx.drawImage(vid, 0, 0, W, H); return; }
   const im = IMG['stage/' + st.id];
+  if (im && PIXEL) { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false; ctx.drawImage(lowCopy(im, W, H), 0, 0, W, H); ctx.imageSmoothingEnabled = sm; return; }   // aréna v rovnakej hustote pixelov ako postavy
   if (im) { const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true; ctx.drawImage(im, 0, 0, W, H); ctx.imageSmoothingEnabled = sm; return; }   // aréna 960×540 → hladko aj pri RES 1
   const t = performance.now() / 1000;
   if (st.id === 'potok') {
@@ -1465,9 +1508,14 @@ function drawFight() {
   drawBanners();
   if (F.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${F.flash / 20})`; ctx.fillRect(0, 0, W, H); }
   if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240))) {
-    if (inputKind(0) === 'touch') text(legend(0, F.fighters[0].id), W / 2, 264, 7, 'center', '#cfe6ff');
-    else text(legend(0, F.fighters[0].id), 8, 264, 7, 'left', '#cfe6ff');
-    text(legend(1, F.fighters[1].id), W - 8, 264, 7, 'right', '#ffd0d0');
+    if (NET.role) {                                   // sieť: len vlastná legenda, na dotyku v strede (nie pod pravými tlačidlami; Codex r10)
+      const ls = NET.role === 'guest' ? 1 : 0, lg = legend(ls, F.fighters[ls].id), col = ls ? '#ffd0d0' : '#cfe6ff';
+      if (localKind() === 'touch') text(lg, W / 2, 264, 7, 'center', col); else text(lg, ls ? W - 8 : 8, 264, 7, ls ? 'right' : 'left', col);
+    } else {
+      if (inputKind(0) === 'touch') text(legend(0, F.fighters[0].id), W / 2, 264, 7, 'center', '#cfe6ff');
+      else text(legend(0, F.fighters[0].id), 8, 264, 7, 'left', '#cfe6ff');
+      text(legend(1, F.fighters[1].id), W - 8, 264, 7, 'right', '#ffd0d0');
+    }
   }
   if (F.phase === 'finish') {
     const w = F.fighters[F.winner];
@@ -1479,13 +1527,14 @@ function drawFight() {
   if (F.paused) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
     bigText('PAUZA', W / 2, 120, 40);
-    if (inputKind(0) === 'touch') {
+    if (F.pauseWhy === 'otoc') text('Telefón je na výšku: otoč ho na šírku a potom POKRAČOVAŤ', W / 2, 88, 9, 'center', '#ffd200');
+    if (localKind() === 'touch') {
       const c = PAUSE_BTNS.cont, m = PAUSE_BTNS.menu;
       ctx.fillStyle = 'rgba(255,210,0,0.28)'; ctx.fillRect(c.x, c.y, c.w, c.h); ctx.strokeStyle = '#ffd200'; ctx.lineWidth = 2; ctx.strokeRect(c.x, c.y, c.w, c.h);
       text('▶ POKRAČOVAŤ', W / 2, c.y + 19, 13, 'center', '#fff');
       ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(m.x, m.y, m.w, m.h);
       text('MENU', W / 2, m.y + 14, 10, 'center', '#ddd');
-      text('alebo START = pokračovať', W / 2, 146, 8, 'center', '#bbb');
+      text('alebo ▶ HRAŤ vľavo hore', W / 2, 146, 8, 'center', '#bbb');   // dotykové tlačidlo má v pauze tento nápis
     }
     else text('ESC = pokračovať    Q = koniec    H = hudba    M = všetok zvuk', W / 2, 150, 10, 'center');
   }
@@ -1726,11 +1775,11 @@ function drawSelect() {
     if (cur) (cur.blurb || []).forEach((l, k) => text(l, W / 2, SEL.y + 2 * SEL.rowH + 4 + k * 9, 7, 'center', '#ccc'));
   }
   if (game.rockyMsg > 0) text('ROCKY EŠTE TRÉNUJE…', W / 2, 252, 12, 'center', '#ffcf6e');
-  else if (inputKind(0) === 'touch' && !game.locked[NET.role === 'guest' ? 1 : 0]) {
+  else if (localKind() === 'touch' && !game.locked[NET.role === 'guest' ? 1 : 0]) {
     const armed = game.tapArm && game.tapArm[NET.role === 'guest' ? 1 : 0] >= 0;
     text(armed ? 'ťukni ešte raz na tú istú postavu = potvrdiť' : 'ťukni na postavu, potom ešte raz = potvrdiť', W / 2, 252, 9, 'center', armed ? '#ffd200' : '#bbb');
   }
-  else if (inputKind(0) === 'pad') text('◀ ▶ výber   □ / ✕ potvrdiť   ○ späť', W / 2, 252, 9, 'center', '#888');
+  else if (localKind() === 'pad') text('◀ ▶ výber   □ / ✕ potvrdiť   ○ späť', W / 2, 252, 9, 'center', '#888');
   else text(game.mode === 1 ? '← → výber   ÚDER/ENTER potvrdiť' : 'Každý hráč si vyberie svojimi klávesmi', W / 2, 252, 9, 'center', '#888');
   {                                                       // späť do menu: vždy (ťuk aj myš); klávesnica má aj Esc (Peťo: po šípke tlačidlo zmizlo)
     const b = SELECT_BACK; ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(b.x, b.y, b.w, b.h);
@@ -1832,7 +1881,7 @@ function drawResult() {
     ctx.strokeStyle = 'rgba(255,210,0,0.8)'; ctx.lineWidth = 1.5; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
     text(b.label, b.x + b.w / 2, b.y + 16, 11, 'center', '#ffd200');
   }
-  if (inputKind(0) !== 'touch') text('ÚDER / ENTER = ďalší zápas     ESC = menu', W / 2, 267, 7, 'center', '#aaa');
+  if (localKind() !== 'touch') text('ÚDER / ENTER = ďalší zápas     ESC = menu', W / 2, 267, 7, 'center', '#aaa');
 }
 function victoryRoyale(x, y) {
   ctx.font = 'bold 30px Impact, "Arial Black", sans-serif'; ctx.textAlign = 'center'; ctx.lineJoin = 'round';
@@ -1898,9 +1947,9 @@ function update() {
 }
 function draw() {
   if (cv.width !== 480 * RES) fitRes();
-  if (RES > 1 && !loadHires.started && scene !== 'loading') loadHires();
+  if (RES > 1 && !PIXEL && !loadHires.started && scene !== 'loading') loadHires();   // PIXEL: postavy z 1× pásov aj na PC (Peťo: na PC to bolo bez zmeny)
   ctx.setTransform(RES, 0, 0, RES, 0, 0);
-  ctx.imageSmoothingEnabled = RES > 1; ctx.imageSmoothingQuality = 'high';
+  ctx.imageSmoothingEnabled = RES > 1 && !PIXEL; ctx.imageSmoothingQuality = 'high';
   switch (scene) {
     case 'loading': drawLoading(); break;
     case 'title': drawTitle(); break;
@@ -1936,7 +1985,7 @@ const api = {
   ATTACK_STATES, HIT_STATES, ctls, cpu, CPU, Fighter, ctx, NO_INPUT,
   get fight() { return F; }, get scene() { return scene; }, get sceneT() { return sceneT; }, get frame() { return frameNo; }, get menu() { return menu; },
   applyHit, banner, say, sfx, synth, spark, shake, text, bigText, drawFigure, drawFighter, animFor, frameOf, silhouette, paletteStrip,
-  setScene, startMatch, nextRound, startFinisher, endFinisher, decides, music, showToast, matchSeq, keyHint, inputKind, legend,
+  setScene, startMatch, nextRound, startFinisher, endFinisher, decides, music, showToast, matchSeq, keyHint, inputKind, localKind, legend,
   rnd, chance, clamp, drawRocky, drawStars, drawLogoTitle,
   registerFighter(id, def, selectable = true) { ROSTER[id] = def; if (selectable && !ORDER.includes(id)) ORDER.push(id); },
   registerScene(name, sc) { SCENES[name] = sc; },
@@ -1945,7 +1994,7 @@ const api = {
   addMenuItem(item, index = MENU.length) { MENU.splice(index, 0, item); },
   animFallback(state, anim) { ANIM_FALLBACK[state] = anim; },
   MENU, SUBMENU, birthday, RESULT_BTNS, SELECT_BACK, PAUSE_BTNS, inBtn, MUSIC_POOL, ANIM_FALLBACK, NET, BUTTONS_LIST: BUTTONS,
-  setFight(obj) { F = obj; }, setSceneRaw(name, t) { scene = name; sceneT = t; }, selPos, selName,
+  setFight(obj) { F = obj; }, setSceneRaw(name, t) { scene = name; sceneT = t; }, selPos, selName, isPortrait: () => !!(portraitMQ && portraitMQ.matches),
   get toast() { return toast; },
 };
 for (const m of MODULES) { try { m.init(api); } catch (e) { console.error('Modul ' + m.name, e); } }

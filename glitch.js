@@ -583,7 +583,7 @@
         const icons = [['◀◀', !g.rw, COL.white], ['1UP', !G.rsp[i], '#7dff6a']];
         icons.forEach(([lbl, on, col], k) => api.text(lbl, x0 + (right ? -1 : 1) * k * 26, 54, 8, right ? 'right' : 'left', on ? col : '#555'));
         ctx.restore();
-        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && api.inputKind(i) !== 'cpu')
+        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && !['cpu', 'remote'].includes(api.inputKind(i)))
           api.text('LAG: ♪ · KLON: ↓ VPRED ♪ · REWIND: VZAD VZAD ♪', i === 0 ? 8 : W - 30, 254, 7, i === 0 ? 'left' : 'right', '#9ff8ff');
       });
     });

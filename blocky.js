@@ -691,7 +691,7 @@
         ctx.fillStyle = '#000'; ctx.fillRect(mx - 1, my - 1, 62, 6);
         ctx.fillStyle = v >= 1 ? col : '#555'; ctx.fillRect(mx, my, Math.round(60 * v), 4);
         api.text('ARROW', mx + (right ? 60 : 0), my + 13, 7, right ? 'right' : 'left', v >= 1 ? col : '#999');
-        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && api.inputKind(side) !== 'cpu') {
+        if (F.round === 1 && (F.phase === 'intro' || (F.phase === 'fight' && F.t < 240)) && !['cpu', 'remote'].includes(api.inputKind(side))) {
           const k = (b, word) => api.keyHint(side, b).trim() || word;
           api.text(`TNT = ${k('special', '♪')} · ARROW = ${k('down', '↓')} VPRED ${k('special', '♪')} · PICKAXE = VZAD VPRED ${k('special', '♪')}`,
             side === 0 ? 8 : W - 30, 254, 7, side === 0 ? 'left' : 'right', '#ffe08a');
