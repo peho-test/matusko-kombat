@@ -1,6 +1,7 @@
 // MATÚŠKO KOMBAT XII — modul ladder: rebrík HORA, tajomstvá, odomykanie, Toasty (P4, P12)
-// - HORA (1 hráč): BATTLE PLAN ako v MK2 (stĺpec portrétov, hráč stúpa vedľa), CONTINUE?, koncovka a titulky SLÁVNA TROJKA.
-//   Blahoželanie s tortou len okolo narodenín (api.birthday() z game.js), bez hlasu.
+// - HORA (1 hráč): BATTLE PLAN ako v MK2 (stĺpec portrétov, hráč stúpa vedľa), CONTINUE?, koncovka: príbeh, blahoželanie,
+//   titulky (scéna credits z credits.js) a záverečná obrazovka s víťazmi. Blahoželanie s tortou len okolo narodenín
+//   (api.birthday() z game.js), bez hlasu.
 // - Prefarbená postava: GOLDEN MATÚŠKO (id zlaty, 2× flawless). Tajný súboj je proti IMPOSTOROVI (registruje iný modul).
 //   Vyradené (Peťo 2. 10.): ČERVENÝ ŠIMON, ORANŽOVÝ MATÚŠKO, TIEŇ, TIEŇ XXL, KAI — nie sú v HORE, nedajú sa odomknúť ani vybrať.
 // - Odomykanie v localStorage 'mk12_unlocks', kódy tlačidlami na výbere postavy, Toasty po uppercute a tajný súboj.
@@ -891,7 +892,7 @@
       },
     });
 
-    // ================================================================= KONCOVKA (príbeh, blahoželanie, titulky)
+    // ================================================================= KONCOVKA (príbeh, blahoželanie, titulky z credits.js, záver)
     const STORY = {
       matusko: b => ['Matúško vyšiel až na vrchol hory.', b + ' sa uklonil a povedal:', '„Tvoje KIAI je silnejšie ako hrom.“', 'A Šimon uznal, že mladší brat je majster.', 'Aspoň do večera.'],
       zlaty: b => ['Golden Matúško svietil na vrchole', 'hory ako slnko.', b + ' si musel zakryť oči', 'a uznal: „Toto je skutočný', 'Super Saiyan.“'],
@@ -905,27 +906,19 @@
       const key = me === 'zlaty' ? 'zlaty' : me === 'boss' ? 'boss' : me === SECRET_ID ? 'impostor' : me === 'matusko' || me === 'simon' ? me : 'other';
       return STORY[key](nice, pretty(nameOf(me)));
     }
-    function creditLines() {
-      const out = [];
-      const add = (s, size, color) => out.push({ s, size, color });
-      const chunk = (arr, k) => { for (let i = 0; i < arr.length; i += k) add(arr.slice(i, i + k).join(' · '), 9, '#ddd'); };
-      add('SLÁVNA TROJKA', 26, 'big'); add('', 10);
-      add('MATÚŠKO', 15, '#ffd200'); add('karate · heligónka · KIAI', 9, '#ddd'); add('', 8);
-      add('ŠIMON', 15, '#ffd200'); add('karate · husle · KIAI', 9, '#ddd'); add('', 8);
-      add('ROCKY', 15, '#ffd200'); add('zlatý retríver · majster olizovania', 9, '#ddd'); add('', 18);
-      const guests = [...new Set(L.steps.map(s => s.id).filter(id => !['matusko', 'simon'].includes(id)))].map(nameOf);
-      if (guests.length) { add('V ÚLOHE SÚPEROV', 11, '#9fd8ff'); chunk(guests, 3); add('', 18); }
-      add('ARÉNY', 11, '#9fd8ff'); chunk(STAGES.map(s => s.name), 3); add('', 18);
-      add('HUDBA', 11, '#9fd8ff'); add('13Up · Okinawa song', 9, '#ddd'); add('', 18);
-      for (const [head, line] of CREDITS_EXTRA) { add(head, 11, '#9fd8ff'); add(line, 9, '#ddd'); add('', 18); }
-      add('MATÚŠKO KOMBAT XII', 22, 'big'); add('k 12. narodeninám · 3. 10. 2026', 9, '#ffb3b3'); add('', 26);
-      add('ĎAKUJEME ZA HRU!', 18, 'big');
-      return out;
-    }
-    const CREDITS_EXTRA = [];   // Master môže doplniť napr. ['NÁPAD A RÉŽIA', '…'] — nič nevymýšľame
-    const E = { stage: 0, t: 0, lines: null, credits: null, confetti: [], bday: null };
-    const E_DUR = [480, 380, 0, 360];      // príbeh, blahoželanie (len okolo narodenín), titulky (podľa dĺžky), záver
+    const E = { stage: 0, t: 0, lines: null, confetti: [], bday: null, resume: false };
+    const E_DUR = [480, 380, 0, 360];      // príbeh, blahoželanie (len okolo narodenín), titulky (scéna credits), záver
     function endingDone() { endLadder(); api.setScene('title'); api.music('title'); }
+    // titulky = scéna credits (credits.js) s porazenými súpermi; ÚDER / ENTER alebo koniec → záverečná obrazovka, Esc → menu.
+    // Bez modulu credits koncovka titulky preskočí.
+    function rollCredits() {
+      E.stage = 2; E.t = 0;
+      if (!api.credits) { E.stage = 3; return; }
+      api.credits.start(how => {
+        if (how === 'back') return endingDone();
+        E.stage = 3; E.t = 0; E.resume = true; api.setScene('hora_koniec');
+      }, { foes: [...new Set(L.steps.map(s => s.id))].map(fullName), finale: false });
+    }
     // blahoželanie len okolo narodenín: game.js dá api.birthday() → { age, name } (1.–10. októbra), inak null
     function birthday() {
       try { const b = typeof api.birthday === 'function' ? api.birthday() : null; return b && typeof b === 'object' && b.age > 0 ? b : null; }
@@ -949,18 +942,20 @@
     api.registerScene('hora_koniec', {
       update() {
         const menu = api.menu;
-        if (api.sceneT === 1) { Object.assign(E, { stage: 0, t: 0, lines: storyLines(), credits: creditLines(), confetti: [], bday: birthday() }); api.music('result'); api.sfx('confirm'); }
+        if (api.sceneT === 1) {
+          if (E.resume) E.resume = false;                              // návrat z titulkov (credits.js): záverečná obrazovka
+          else { Object.assign(E, { stage: 0, t: 0, lines: storyLines(), confetti: [], bday: birthday() }); api.music('result'); api.sfx('confirm'); }
+        }
         E.t++;                                                       // hlas „birthday“ nie (Peťo: „nech hlas nič nepovie“)
         if (E.stage >= 1 && E.t % 4 === 0) E.confetti.push({ x: api.rnd(0, W), y: -5, vy: api.rnd(0.8, 2), vx: api.rnd(-0.5, 0.5), c: ['#ff4d4d', '#ffd200', '#4dd2ff', '#7dff6a', '#ff7ae0'][Math.floor(api.rnd(0, 5))] });
         for (const c of E.confetti) { c.x += c.vx; c.y += c.vy; }
         while (E.confetti.length && E.confetti[0].y > H + 10) E.confetti.shift();
         if (menu.back) return endingDone();
-        const creditsH = E.credits.reduce((s, l) => s + l.size + 6, 0);
-        const dur = E.stage === 2 ? Math.ceil((creditsH + H + 20) / 0.6) : E_DUR[E.stage];
-        if (E.t >= dur || (menu.ok && E.t > 40)) {
+        if (E.t >= E_DUR[E.stage] || (menu.ok && E.t > 40)) {
           E.stage++; E.t = 0;
           if (E.stage === 1 && !E.bday) E.stage = 2;                // mimo narodenín bez blahoželania rovno titulky
-          if (E.stage > 3) endingDone();
+          if (E.stage === 2) rollCredits();
+          else if (E.stage > 3) endingDone();
         }
       },
       draw() {
@@ -997,20 +992,12 @@
           const ww = ctx.measureText(wish).width;
           bigText(wish, W / 2, 94, ww > W - 24 ? Math.floor(24 * (W - 24) / ww) : 24);
           if (t > 60) text('Nech ti KIAI vydrží celý rok!', W / 2, 122, 12, 'center', '#ffd28a');
-        } else if (E.stage === 2) {
-          ctx.fillStyle = '#05040a'; ctx.fillRect(0, 0, W, H);
-          for (const c of E.confetti) { ctx.fillStyle = c.c; ctx.globalAlpha = 0.5; ctx.fillRect(Math.round(c.x), Math.round(c.y), 3, 4); ctx.globalAlpha = 1; }
-          let y = H + 20 - t * 0.6;
-          for (const l of E.credits) {
-            y += l.size + 6;
-            if (y < -30 || y > H + 30 || !l.s) continue;
-            if (l.color === 'big') bigText(l.s, W / 2, y, l.size); else text(l.s, W / 2, y, l.size, 'center', l.color);
-          }
-        } else {
+        } else {                                                     // záver po titulkoch (Peťo 2. 10.: bez nápisu SLÁVNA TROJKA)
           ctx.fillStyle = '#05040a'; ctx.fillRect(0, 0, W, H);
           for (const c of E.confetti) { ctx.fillStyle = c.c; ctx.fillRect(Math.round(c.x), Math.round(c.y), 3, 4); }
-          bigText('SLÁVNA TROJKA', W / 2, 54, 30);
-          text('MATÚŠKO · ŠIMON · ROCKY', W / 2, 78, 14, 'center', '#ffd28a');
+          if (api.drawLogoTitle) { api.drawLogoTitle(W / 2, 46, 30, api.sceneT); bigText('XII', W / 2, 72, 20, true); }
+          else bigText('MATÚŠKO KOMBAT XII', W / 2, 54, 30);
+          text('ĎAKUJEME ZA HRANIE!', W / 2, 94, 12, 'center', '#ffd28a');
           ctx.fillStyle = '#1a1626'; ctx.beginPath(); ctx.ellipse(W / 2, 250, 190, 10, 0, 0, Math.PI * 2); ctx.fill();
           for (const [id, x, dir] of [['matusko', 140, 1], ['simon', 340, -1]]) if (ROSTER[id]) {
             const f = fake(id, 'win'); f.x = x; f.y = 248; f.t = t; f.facing = dir; api.drawFighter(f);

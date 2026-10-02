@@ -1876,7 +1876,7 @@ const api = {
   get fight() { return F; }, get scene() { return scene; }, get sceneT() { return sceneT; }, get frame() { return frameNo; }, get menu() { return menu; },
   applyHit, banner, say, sfx, synth, spark, shake, text, bigText, drawFigure, drawFighter, animFor, frameOf, silhouette, paletteStrip,
   setScene, startMatch, nextRound, startFinisher, endFinisher, decides, music, showToast, matchSeq, keyHint, inputKind, legend,
-  rnd, chance, clamp, drawRocky, drawStars,
+  rnd, chance, clamp, drawRocky, drawStars, drawLogoTitle,
   registerFighter(id, def, selectable = true) { ROSTER[id] = def; if (selectable && !ORDER.includes(id)) ORDER.push(id); },
   registerScene(name, sc) { SCENES[name] = sc; },
   registerFinisher(kind, def) { FINISHERS[kind] = def; },
