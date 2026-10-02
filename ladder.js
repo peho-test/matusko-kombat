@@ -1,6 +1,8 @@
-// MATÚŠKO KOMBAT XII — modul ladder: rebrík HORA, tajomstvá, odomykanie, Toasty (P4)
-// - HORA (1 hráč): veža súperov ako v MK2, CONTINUE?, koncovka s blahoželaním a titulkami SLÁVNA TROJKA.
-// - Prefarbené postavy: TIEŇ, ČERVENÝ ŠIMON, ZLATÝ MATÚŠKO (+ ORANŽOVÝ MATÚŠKO, TIEŇ XXL, KAI len ako súperi).
+// MATÚŠKO KOMBAT XII — modul ladder: rebrík HORA, tajomstvá, odomykanie, Toasty (P4, P12)
+// - HORA (1 hráč): BATTLE PLAN ako v MK2 (stĺpec portrétov, hráč stúpa vedľa), CONTINUE?, koncovka a titulky SLÁVNA TROJKA.
+//   Blahoželanie s tortou len okolo narodenín (api.birthday() z game.js), bez hlasu.
+// - Prefarbená postava: GOLDEN MATÚŠKO (id zlaty, 2× flawless). Tajný súboj je proti IMPOSTOROVI (registruje iný modul).
+//   Vyradené (Peťo 2. 10.): ČERVENÝ ŠIMON, ORANŽOVÝ MATÚŠKO, TIEŇ, TIEŇ XXL, KAI — nie sú v HORE, nedajú sa odomknúť ani vybrať.
 // - Odomykanie v localStorage 'mk12_unlocks', kódy tlačidlami na výbere postavy, Toasty po uppercute a tajný súboj.
 // Vstup číta len cez api.ctls (held / pressed / history) a api.matchSeq, nikdy nie klávesnicu priamo.
 (window.MK_MODULES = window.MK_MODULES || []).push({
@@ -11,25 +13,39 @@
     const ctx = api.ctx, text = api.text, bigText = api.bigText;
 
     // ================================================================= nastavenia rebríka (Master môže upraviť)
-    // Poradie súperov zdola nahor. pick(hráč) vráti id súpera; čo nie je v ROSTER (alebo je to sám hráč), sa preskočí.
-    // Súper môže mať v ROSTER vlastné ladderStage / ladderLevel (napr. z enemies.js), tie majú prednosť.
-    const LADDER = [
-      { key: 'brat',         stage: 'potok',   level: 0.55, pick: p => brother(p) },
-      { key: 'farba',        stage: 'dojo',    level: 0.62, pick: p => recolorOf(brother(p)) },
-      { key: 'rocky',        stage: 'zahrada', level: 0.68, pick: () => (rockyReady() ? 'rocky' : null) },
-      { key: 'ninja_fire',   stage: 'tabor',   level: 0.72, pick: () => 'ninja_fire' },
-      { key: 'ninja_ice',    stage: 'more',    level: 0.76, pick: () => 'ninja_ice' },
-      { key: 'vodnik',       stage: 'potok',   level: 0.78, pick: () => (ROSTER.vodnik ? 'vodnik' : null) },    // doma pri potoku je silnejší
-      { key: 'ninja_shadow', stage: 'dojo',    level: 0.80, pick: () => 'ninja_shadow' },
-      { key: 'kai',          stage: 'most',    level: 0.85, pick: () => (ensureKai() ? 'kai' : null) },
-      { key: 'glitch',       stage: 'zahrada', level: 0.90, pick: () => (ROSTER.glitch ? 'glitch' : null) },
-      { key: 'tien',         stage: 'tabor',   level: 0.95, pick: () => 'tien' },
-      { key: 'boss',         stage: 'hora',    level: 1.10, boss: true, pick: p => (ROSTER.boss && p !== 'boss' ? 'boss' : 'tien_xxl') },
+    // Tri veže ako v MK (Peťo 2. 10.): NOVICE (4 + boss), WARRIOR (6 + boss), MASTER (všetci + boss). Súperi zdola nahor,
+    // obťažnosť CPU stúpa. Čo nie je v ROSTER (alebo je to sám hráč), sa preskočí. Brat (Šimon pre Matúška a naopak)
+    // je vždy veľký rival tesne pred bossom, aby nebol „prvý najľahší“. Za MASTER STORMA (hráč = boss) je vrcholom brat.
+    // BANÁNÁČ (bananac), BLOCKY (blocky) a IMPOSTOR (impostor) registrujú iné moduly. Súper môže mať v ROSTER ladderStage.
+    const has = id => () => (ROSTER[id] ? id : null);
+    const STEP = {                             // aréna a výber súpera pre každý krok veže
+      ninja_fire:   { stage: 'tabor',   pick: has('ninja_fire') },
+      rocky:        { stage: 'zahrada', pick: () => (rockyReady() ? 'rocky' : null) },
+      ninja_ice:    { stage: 'more',    pick: has('ninja_ice') },
+      vodnik:       { stage: 'potok',   pick: has('vodnik') },          // doma pri potoku je silnejší
+      bananac:      { stage: 'zahrada', pick: has('bananac') },
+      ninja_shadow: { stage: 'most',    pick: has('ninja_shadow') },
+      blocky:       { stage: 'potok',   pick: has('blocky') },
+      glitch:       { stage: 'tabor',   pick: has('glitch') },
+      brat:         { stage: 'dojo',    rival: true, pick: p => brother(p) },
+      boss:         { stage: 'hora',    boss: true, pick: p => (ROSTER.boss && p !== 'boss' ? 'boss' : null) },
+    };
+    const TOWERS = [                           // [krok, obťažnosť CPU]; bossDmg = silnejšie údery bossa
+      { key: 'novice', name: 'NOVICE', color: '#7dff6a', bossDmg: 1.0,
+        steps: [['ninja_fire', 0.45], ['rocky', 0.53], ['ninja_ice', 0.61], ['brat', 0.70], ['boss', 0.80]] },
+      { key: 'warrior', name: 'WARRIOR', color: '#ffd200', bossDmg: 1.1,
+        steps: [['ninja_fire', 0.55], ['rocky', 0.60], ['ninja_ice', 0.66], ['vodnik', 0.72], ['bananac', 0.78], ['brat', 0.88], ['boss', 1.00]] },
+      { key: 'master', name: 'MASTER', color: '#ff5a3c', bossDmg: 1.2,
+        steps: [['ninja_fire', 0.65], ['rocky', 0.70], ['ninja_ice', 0.75], ['vodnik', 0.80], ['bananac', 0.85], ['ninja_shadow', 0.90],
+                ['blocky', 0.94], ['glitch', 0.98], ['brat', 1.05], ['boss', 1.15]] },
     ];
-    const BOSS_HP = 130, XXL_HP = 150, BOSS_DMG = 1.2;
+    const towerOf = key => TOWERS.find(t => t.key === key) || TOWERS[TOWERS.length - 1];
+    const LADDER = towerOf('master').steps.map(([key, level]) => Object.assign({ key, level }, STEP[key]));   // celá veža (pre testy a moduly)
+    const BOSS_HP = 130;
+    const SECRET_ID = 'impostor';              // súper tajného súboja (Among Us astronaut z iného modulu); bez neho sa tajný súboj nespustí
     const TOASTY_CHANCE = 0.25, TOASTY_LIFE = 66, SECRET_GRACE = 30;
     const CODE_GAP = 45;                       // max. snímok medzi stlačeniami kódu na výbere postavy
-    const WALK_F = 1.7, WALK_B = 1.3;          // rovnaké ako v game.js (rýchlejší TIEŇ ich násobí def.speed)
+    const WALK_F = 1.7, WALK_B = 1.3;          // rovnaké ako v game.js (rýchlejšie postavy, napr. Rocky, ich násobia def.speed)
 
     // ================================================================= farby: prefarbenie spritov a portrétov
     function rgb2hsl(r, g, b) {
@@ -48,11 +64,6 @@
       return [Math.round(f(h + 1 / 3) * 255), Math.round(f(h) * 255), Math.round(f(h - 1 / 3) * 255)];
     }
     function copyCanvas(src, w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(src, 0, 0); return c; }
-    function solid(src, w, h, color) {
-      const c = copyCanvas(src, w, h), x = c.getContext('2d');
-      x.globalCompositeOperation = 'source-in'; x.fillStyle = color; x.fillRect(0, 0, w, h);
-      return c;
-    }
     // náhrada bez čítania pixelov: zmes farby cez celý sprite, priehľadnosť ostane pôvodná
     function blendTint(x, w, h, mode, color) {
       const keep = copyCanvas(x.canvas, w, h);
@@ -85,13 +96,7 @@
         }
       };
     }
-    // TIEŇ: čierna silueta s fialovým okrajom (čistá 'shadow' by v TÁBORE V NOCI a na tmavom výbere zanikla)
-    api.registerPalette('tien', (x, w, h) => {
-      const src = copyCanvas(x.canvas, w, h), rim = solid(src, w, h, '#8a72ec'), body = solid(src, w, h, '#0d0b14');
-      x.save(); x.clearRect(0, 0, w, h); x.globalAlpha = 0.9;
-      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) x.drawImage(rim, dx, dy);
-      x.globalAlpha = 1; x.drawImage(body, 0, 0); x.restore();
-    });
+    // ČERVENÝ ŠIMON a ORANŽOVÝ MATÚŠKO (vyradení, pozri reg nižšie): palety ostávajú pre staré záznamy a test_stats.js
     // ČERVENÝ ŠIMON: modré kimono → červené, pleť ostáva; náhrada = odtieň celej postavy do červena
     api.registerPalette('cerveny', (x, w, h) => {
       const ok = pixels(x, w, h, recolor((hh, s, l) => (hh >= 188 && hh <= 262 && s >= 0.3 && chroma(s, l) >= 0.08 && l >= 0.06 && l <= 0.9
@@ -107,7 +112,7 @@
       }));
       if (!ok) blendTint(x, w, h, 'multiply', '#ffad5c');
     });
-    // ZLATÝ MATÚŠKO: hnedé vlasy → zlaté (hustota 5×5 odfiltruje tmavé tiene na chodidlách), vrch vlasov pre kreslené špice
+    // GOLDEN MATÚŠKO (zlaty): hnedé vlasy → zlaté (hustota 5×5 odfiltruje tmavé tiene na chodidlách), vrch vlasov pre kreslené špice
     function goldHair(d, w, h, canvas) {
       const n = w * h, m = new Uint8Array(n);
       for (let p = 0, i = 0; p < n; p++, i += 4) {
@@ -137,44 +142,23 @@
       const ok = pixels(x, w, h, (d, ww, hh) => goldHair(d, ww, hh, x.canvas));
       if (!ok) filterTint(x, w, h, 'sepia(1) saturate(3.2) hue-rotate(-10deg) brightness(1.12)', 'color', '#ffc21a');   // celý zlatý
     });
-    // KAI (anime súper z bossa): biele vlasy → modré, farby oblečenia otočené, pleť ostáva
-    api.registerPalette('kai', (x, w, h) => {
-      const ok = pixels(x, w, h, recolor((hh, s, l) => {
-        if (l > 0.72 && (s < 0.3 || chroma(s, l) < 0.12)) return [204, 0.85, 0.42 + (l - 0.72) * 1.1];
-        if (s > 0.3 && chroma(s, l) >= 0.12 && !(hh >= 5 && hh <= 50 && l > 0.3)) return [hh + 180, s, l];
-        return null;
-      }));
-      if (!ok) filterTint(x, w, h, 'hue-rotate(180deg)', 'hue', '#3a7bff');
-    });
 
-    // ================================================================= prefarbené postavy
+    // ================================================================= prefarbené postavy (mená po anglicky, Peťo 2. 10.; id ostávajú kvôli uloženým odomknutiam)
     const S0 = ROSTER.simon || {}, M0 = ROSTER.matusko || {};
     function reg(id, def) { if (!ROSTER[id]) api.registerFighter(id, def, false); }
-    reg('tien', { name: 'TIEŇ', short: 'TIEŇ', sprites: 'simon', palette: 'tien', speed: 1.2,
-      gi: '#1a1626', giDark: '#0c0a12', belt: '#3a2f5a', hair: '#050407', special: 'husle', specialName: 'HUSLE', finisher: 'babality',
-      blurb: ['Tichý ako noc', 'a o kúsok rýchlejší.', 'Kto sa skrýva v tieni?'] });
-    reg('tien_xxl', { name: 'TIEŇ XXL', short: 'XXL', sprites: 'simon', palette: 'tien', scale: 1.25, hp: XXL_HP, height: 172, ladderDmg: BOSS_DMG,
-      gi: '#1a1626', giDark: '#0c0a12', belt: '#3a2f5a', hair: '#050407', special: 'husle', specialName: 'HUSLE', finisher: 'babality',
-      blurb: ['Obrovský tieň', 'stráži vrchol hory.', 'Má viac života.'] });
+    // Vyradené postavy (Peťo 2. 10.: „nedávajme postavu červený Šimon“, KAI a TIEŇ sú len prefarbené kópie): nie sú v HORE,
+    // nedajú sa odomknúť a nikdy nie sú na výbere, ani keď ich má niekto uložené v mk12_unlocks (Peťo má CERVENY).
+    // ČERVENÝ a ORANŽOVÝ ostávajú zaregistrovaní (nevoliteľní) len pre staré záznamy v SIENI SLÁVY a test_stats.js.
+    const RETIRED_IDS = ['cerveny', 'oranzovy', 'tien', 'tien_xxl', 'kai'], RETIRED_KEYS = ['CERVENY', 'TIEN', 'KAI', 'BEAT_KAI'];
     reg('cerveny', { name: 'ČERVENÝ ŠIMON', short: 'ČERVENÝ', sprites: 'simon', palette: 'cerveny',
       gi: '#c62828', giDark: '#8e1c1c', belt: S0.belt || '#27ae60', hair: S0.hair || '#4a2f17', special: 'husle', specialName: 'HUSLE', finisher: 'babality',
       blurb: ['Šimon v červenom kimone.', 'Husle má rovnaké,', 'sólo ešte horúcejšie.'] });
     reg('oranzovy', { name: 'ORANŽOVÝ MATÚŠKO', short: 'ORANŽOVÝ', sprites: 'matusko', palette: 'oranzovy',
       gi: '#f39a3c', giDark: '#c8741f', belt: '#1b1b1b', hair: M0.hair || '#5b3a1e', special: 'heligonka', specialName: 'HELIGÓNKA', finisher: 'folklority',
       blurb: ['Matúško v oranžovom', 'kimone s čiernym pásom.', 'Heligónka hrá rovnako.'] });
-    reg('zlaty', { name: 'ZLATÝ MATÚŠKO', short: 'ZLATÝ', sprites: 'matusko', palette: 'zlaty', alwaysSsj: true, spikes: true,
+    reg('zlaty', { name: 'GOLDEN MATÚŠKO', short: 'GOLDEN', sprites: 'matusko', palette: 'zlaty', alwaysSsj: true, spikes: true,
       gi: M0.gi || '#f2f2f2', giDark: M0.giDark || '#c9c9c9', belt: M0.belt || '#e67e22', hair: '#ffd23a', special: 'heligonka', specialName: 'HELIGÓNKA', finisher: 'folklority',
       blurb: ['Super Saiyan navždy:', 'zlaté vlasy, zlatá aura', 'a silnejšie údery.'] });
-    // KAI vznikne z bossa (enemies.js), až keď boss existuje
-    function ensureKai() {
-      if (ROSTER.kai) return true;
-      const b = ROSTER.boss; if (!b) return false;
-      const def = Object.assign({}, b, { name: 'KAI', short: 'KAI', palette: 'kai', gi: '#1f3f8f', giDark: '#152c66', belt: '#e8e8e8', hair: '#4fc3ff',
-        specialName: b.specialName || 'BLESK', blurb: ['Anime bojovník', 'z Dračieho mosta.', 'Modré vlasy, rýchle päste.'] });
-      for (const k of ['hp', 'scale', 'height', 'dmgMul', 'ladderDmg', 'ladderStage', 'ladderLevel']) delete def[k];
-      api.registerFighter('kai', def, false);
-      return true;
-    }
     function rockyReady() {
       const d = ROSTER.rocky; if (!d) return false;
       const sid = d.sprites || 'rocky';
@@ -182,34 +166,36 @@
     }
     const baseOf = id => (ROSTER[id] && ROSTER[id].sprites) || id;
     function brother(p) { const b = baseOf(p); return b === 'simon' ? 'matusko' : 'simon'; }
-    function recolorOf(id) { return id === 'simon' ? 'cerveny' : id === 'matusko' ? 'oranzovy' : null; }
     const nameOf = id => (ROSTER[id] ? ROSTER[id].name : id);
+    const FULL = {};                                              // plné mená postáv (fitSelectNames ich na výbere skracuje)
+    const fullName = id => FULL[id] || nameOf(id);                // na výbere môže byť def.name dočasne krátke meno (fitSelectNames)
     const pretty = str => String(str).split(' ').map(w => (/^X+L?$/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase())).join(' ');   // MAJSTER MRAK → Majster Mrak
     const isHuman = f => !(f.ctl instanceof api.CPU);
     const touchUI = () => api.inputKind(0) === 'touch';          // mobil bez klávesnice: nápovedy „ťukni“
-    const isKick = n => /kick|kop|sweep|tornado|roundhouse/i.test(String(n || ''));
 
     // ================================================================= odomykanie (localStorage 'mk12_unlocks')
     const UKEY = 'mk12_unlocks';
     const unlocked = new Set();
     try { const raw = localStorage.getItem(UKEY); if (raw) for (const k of JSON.parse(raw)) unlocked.add(String(k)); } catch (e) { /* bez úložiska len v pamäti */ }
+    for (const k of RETIRED_KEYS) unlocked.delete(k);      // staré CERVENY (Peťo ho má uložené) sa ignoruje, pri ďalšom uložení zmizne
     const UNLOCKS = {
-      TIEN: { id: () => 'tien', label: () => 'TIEŇ' },
-      CERVENY: { id: () => 'cerveny', label: () => 'ČERVENÝ ŠIMON' },
-      ZLATY: { id: () => 'zlaty', label: () => 'ZLATÝ MATÚŠKO' },
-      BOSS: { id: () => (ROSTER.boss ? 'boss' : 'tien_xxl'), label: () => nameOf(ROSTER.boss ? 'boss' : 'tien_xxl') },
-      ROCKY: { id: () => (ROSTER.rocky ? 'rocky' : null), label: () => 'ROCKY' },
+      ZLATY: { id: () => 'zlaty', label: () => fullName('zlaty') },                              // 2× flawless v jednom zápase
+      BOSS: { id: () => (ROSTER.boss ? 'boss' : null), label: () => fullName('boss') },          // zdolaná HORA (výhra nad bossom)
+      ROCKY: { id: () => (ROSTER.rocky ? 'rocky' : null), label: () => 'ROCKY' },                // kód ↓↓↓ + ♪ alebo porazený v HORE
+      IMPOSTOR: { id: () => (ROSTER[SECRET_ID] ? SECRET_ID : null), label: () => 'IMPOSTOR' },   // vyhratý tajný súboj
     };
-    // porazený súper z HORY sa stane hrateľným (boss ostáva odmena za horu bez prehratého kola)
-    const BEAT_UNLOCK = { ninja_fire: 'OHNIVÝ NINJA', ninja_ice: 'ĽADOVÝ NINJA', ninja_shadow: 'TIEŇOVÝ NINJA', kai: 'KAI', vodnik: 'VODNÍK', glitch: 'GLITCH', rocky: 'ROCKY' };
-    for (const [id, label] of Object.entries(BEAT_UNLOCK)) if (id !== 'rocky') UNLOCKS['BEAT_' + id.toUpperCase()] = { id: () => (ROSTER[id] ? id : null), label: () => label };
-    function unlockBeaten(id) {
-      if (!BEAT_UNLOCK[id] || !ROSTER[id]) return;
-      if (id === 'rocky') unlock('ROCKY'); else unlock('BEAT_' + id.toUpperCase());
+    // porazený súper z HORY sa stane hrateľným; mená berie z ROSTER (enemies.js a ďalšie moduly ich môžu premenovať)
+    const BEAT_UNLOCK = ['ninja_fire', 'ninja_ice', 'ninja_shadow', 'vodnik', 'bananac', 'blocky', 'glitch', 'rocky'];
+    for (const id of BEAT_UNLOCK) if (id !== 'rocky') UNLOCKS['BEAT_' + id.toUpperCase()] = { id: () => (ROSTER[id] ? id : null), label: () => fullName(id) };
+    function unlockBeaten(id) {             // v HORE bez toastu: obrazovka HORA ukáže „NOVÁ POSTAVA!“ pri prečiarknutom portréte
+      if (!BEAT_UNLOCK.includes(id) || !ROSTER[id]) return false;
+      return unlock(id === 'rocky' ? 'ROCKY' : 'BEAT_' + id.toUpperCase(), true);
     }
     function saveUnlocks() { try { localStorage.setItem(UKEY, JSON.stringify([...unlocked])); } catch (e) { /* nevadí */ } }
     function applyUnlocks() {
       for (const k of unlocked) { const u = UNLOCKS[k], id = u && u.id(); if (id && ROSTER[id] && !ORDER.includes(id)) ORDER.push(id); }
+      if (!(api.NET && api.NET.role === 'guest'))           // poistka: vyradené postavy nikdy na výbere (hosťovi poradie posiela hostiteľ)
+        for (const id of RETIRED_IDS) { const i = ORDER.indexOf(id); if (i >= 0) ORDER.splice(i, 1); }
     }
     function unlock(k, quiet) {
       if (!UNLOCKS[k] || unlocked.has(k)) return false;
@@ -238,17 +224,6 @@
       x.drawImage(an.img, x0, 0, x1 - x0, ch, (x0 - sx) * k, 0, (x1 - x0) * k, 120);
       return c;
     }
-    function shadowPortrait(bim) {            // TIEŇ: čierna silueta na fialovej žiare (na tmavom výbere by inak zanikla)
-      const w = bim.width, h = bim.height, c = document.createElement('canvas'); c.width = w; c.height = h;
-      const x = c.getContext('2d'), g = x.createRadialGradient(w / 2, h * 0.42, 4, w / 2, h * 0.42, h * 0.75);
-      g.addColorStop(0, '#6b4fc0'); g.addColorStop(0.55, '#2a1c4f'); g.addColorStop(1, '#0d0918');
-      x.fillStyle = g; x.fillRect(0, 0, w, h);
-      const rim = solid(bim, w, h, '#b9a6ff'), body = solid(bim, w, h, '#0d0b14');
-      x.globalAlpha = 0.85;
-      for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, -1], [-1, 1], [1, 1]]) x.drawImage(rim, dx, dy);
-      x.globalAlpha = 1; x.drawImage(body, 0, 0);
-      return c;
-    }
     function portraitOf(id) {
       const key = 'img/portrait_' + id;
       if (IMG[key]) return IMG[key];
@@ -257,7 +232,7 @@
       try {
         if (id === 'zlaty' && IMG['img/portrait_ssj_matusko']) out = IMG['img/portrait_ssj_matusko'];
         const b = def.sprites, bim = b && IMG['img/portrait_' + b];
-        if (!out && bim) out = def.palette === 'tien' ? shadowPortrait(bim) : def.palette ? api.paletteStrip(fake(id), 'portrait', bim) : bim;
+        if (!out && bim) out = def.palette ? api.paletteStrip(fake(id), 'portrait', bim) : bim;
         if (!out) out = spritePortrait(id);
       } catch (e) { console.warn('portrét', id, e); out = null; }
       if (out) IMG[key] = out;               // game.js ho potom použije na výbere aj vo VS
@@ -290,10 +265,11 @@
     }
 
     // ================================================================= stav
-    const L = { pending: false, active: false, player: null, steps: [], idx: 0, lostRounds: 0, continues: 0, climbFrom: -1, newUnlocks: [], done: false };
-    const S = { armed: false, codeTien: false, ssj: [false, false], opp: 'tien', player: null };   // tajomstvá
+    const L = { pending: false, active: false, player: null, tower: 'warrior', steps: [], idx: 0, lostRounds: 0, continues: 0, climbFrom: -1, freshIdx: -1, newUnlocks: [], done: false };
+    const TS = { sel: 1, cols: null };          // výber veže: posledná vybraná (predvolene WARRIOR), stĺpce pre obrazovku
+    const S = { armed: false, codeSecret: false, ssj: [false, false], opp: SECRET_ID, player: null };   // tajomstvá
     const T = { on: false, t: 0, life: TOASTY_LIFE, count: 0, wink: 0 };                         // Toasty
-    let M = null;               // aktuálny zápas: druh, kolá, flawless, kopy
+    let M = null;               // aktuálny zápas: druh, kolá, flawless
     let pendingKind = null;     // 'ladder' | 'secret' pre najbližší startMatch
     let savedLevel = null;      // obťažnosť CPU pred rebríkom / tajným súbojom
     function setLevel(v) { if (savedLevel === null) savedLevel = api.cpu.level; api.cpu.level = v; }
@@ -304,30 +280,32 @@
     }
     const stageName = id => { const s = STAGES.find(x => x.id === id); return s ? s.name : String(id || '').toUpperCase(); };
 
-    function buildLadder(player) {
-      const used = new Set([player]), steps = [];
-      for (const s of LADDER) {
+    function buildLadder(player, towerKey = 'master') {
+      const tw = towerOf(towerKey), used = new Set([player]), steps = [];
+      for (const [key, level] of tw.steps) {
+        const s = STEP[key];
         let id = null;
         try { id = s.pick(player); } catch (e) { id = null; }
-        if (!id || !ROSTER[id] || used.has(id)) {
-          if (!s.boss) continue;
-          id = ['boss', 'tien_xxl', 'tien'].find(x => ROSTER[x] && x !== player) || 'tien_xxl';   // vrchol musí mať strážcu
-        }
+        if (!id || !ROSTER[id] || used.has(id)) continue;         // bez bossa (alebo za bossa) je vrcholom brat
         used.add(id);
         const def = ROSTER[id];
         const prefer = typeof def.ladderStage === 'string' ? def.ladderStage : typeof def.stage === 'string' ? def.stage : s.stage;
-        const st = { key: s.key, id, stage: resolveStage(prefer), level: typeof def.ladderLevel === 'number' ? def.ladderLevel : s.level, boss: !!s.boss };
+        const st = { key, id, stage: resolveStage(prefer), level, boss: !!s.boss, rival: !!s.rival, tower: tw.key };
+        const prev = steps[steps.length - 1];
+        if (prev && st.level <= prev.level) st.level = Math.round((prev.level + 0.03) * 100) / 100;   // smerom hore vždy ťažšie
         if (s.boss) {
-          st.hp = def.hp || (id === 'tien_xxl' ? XXL_HP : BOSS_HP);
-          if (id === 'boss' && !def.dmgMul) st.dmgMul = BOSS_DMG;      // ak boss nemá vlastné dmgMul (enemies.js), pridá ho rebrík
+          st.hp = def.hp || BOSS_HP;
+          if (id === 'boss' && !def.dmgMul && tw.bossDmg > 1) st.dmgMul = tw.bossDmg;   // ak boss nemá vlastné dmgMul (enemies.js), pridá ho veža
         }
         steps.push(st);
       }
       return steps;
     }
-    function startHoraSelect() { L.pending = true; L.active = false; S.codeTien = false; game.mode = 1; api.setScene('select'); }
-    function beginLadder(player) {
-      Object.assign(L, { pending: false, active: true, player, steps: buildLadder(player), idx: 0, lostRounds: 0, continues: 0, climbFrom: -1, newUnlocks: [], done: false, startedAt: Date.now() });
+    function startHoraSelect() { L.pending = true; L.active = false; S.codeSecret = false; game.mode = 1; api.setScene('select'); }
+    function goTowerSelect(player) { L.player = player; TS.cols = null; api.setScene('hora_veza'); }    // po výbere postavy výber veže
+    function beginLadder(player, towerKey = TOWERS[TS.sel].key) {
+      Object.assign(L, { pending: false, active: true, player, tower: towerOf(towerKey).key, steps: buildLadder(player, towerKey), idx: 0, lostRounds: 0, continues: 0,
+        climbFrom: -1, freshIdx: -1, newUnlocks: [], done: false, startedAt: Date.now() });
       prewarm([player, ...L.steps.map(s => s.id)]);
       api.setScene('hora');
     }
@@ -344,21 +322,24 @@
     }
     function finishLadder() {
       L.newUnlocks = []; L.done = true;
-      if (api.stats) api.stats.hora(L.player, L.startedAt ? Date.now() - L.startedAt : 0);   // SIEŇ SLÁVY: zdolaná hora + čas výstupu
-      if (unlock('TIEN', true)) L.newUnlocks.push(UNLOCKS.TIEN.label());
-      if (L.lostRounds === 0 && L.continues === 0 && unlock('BOSS', true)) L.newUnlocks.push(UNLOCKS.BOSS.label());
+      if (api.stats) api.stats.hora(L.player, L.startedAt ? Date.now() - L.startedAt : 0, towerOf(L.tower).name);   // SIEŇ SLÁVY: hora, čas, veža
+      // zdolaná HORA = porazený boss → MASTER STORM na výbere (podmienka „bez prehratého kola“ zrušená, Peťo 2. 10.)
+      if (L.steps.some(s => s.boss) && unlock('BOSS', true)) L.newUnlocks.push(UNLOCKS.BOSS.label());
       restoreLevel();
     }
     function endLadder() {
       L.active = false; L.pending = false; L.done = false; pendingKind = null; S.armed = false;
       restoreLevel();
     }
-    function goSecret(lastOpp) {
+    // tajný súboj: IMPOSTOR (iný modul); bez neho sa nespustí, za IMPOSTORA tiež nie (zrkadlový zápas game.js nerobí)
+    const secretOk = player => !!ROSTER[SECRET_ID] && player !== SECRET_ID;
+    function goSecret() {
       const player = L.active ? L.player : game.picks[0];
-      S.player = player;
-      S.opp = (player === 'tien' || lastOpp === 'tien') ? 'tien_xxl' : 'tien';
+      if (!secretOk(player)) return false;
+      S.player = player; S.opp = SECRET_ID;
       prewarm([player, S.opp]);
       api.setScene('tajny');
+      return true;
     }
     function startSecretMatch() {
       game.mode = 1; game.picks = [S.player, S.opp]; game.locked = [true, true];
@@ -412,7 +393,7 @@
       if (T.wink > 0) text('!!!', W - 36, H - 96, 14, 'center', '#ffe23a');
     }
 
-    // ZLATÝ MATÚŠKO: kreslené špice nad vrchom vlasov (len keď sa dali prečítať pixely)
+    // GOLDEN MATÚŠKO: kreslené špice nad vrchom vlasov (len keď sa dali prečítať pixely)
     function drawSpikes(f) {
       const anim = api.animFor(f);
       if (!anim || !anim.img || !anim.img.__hairTop) return;
@@ -438,19 +419,16 @@
       ctx.restore();
     }
 
-    // ================================================================= sledovanie zápasu (kolá, flawless, kolo len kopmi)
+    // ================================================================= sledovanie zápasu (kolá, flawless, Toasty)
     function roundDecided(F, w) {
       if (w < 0) return;
       M.roundsWon[w]++;
       const f = F.fighters[w];
       if (!isHuman(f)) return;
       if (f.damageTaken === 0 && ++M.flawless[w] >= 2) unlock('ZLATY');
-      if (M.hits[w] > 0 && !M.nonKick[w]) unlock('CERVENY');
+      // „kolo len kopmi“ už nič neodomyká (ČERVENÝ ŠIMON vyradený, Peťo 2. 10.)
     }
     function trackFight(F) {
-      if (F.phase === 'fight') F.fighters.forEach((f, i) => {           // aj netrafený úder sa počíta (nie len zásahy)
-        if (isHuman(f) && api.ATTACK_STATES.has(f.state) && !isKick(f.move || f.state)) M.nonKick[i] = true;
-      });
       if (F.phase !== M.lastPhase) {
         const prev = M.lastPhase; M.lastPhase = F.phase;
         // posledné kolo ide cez FINISH HIM (bez roundEnd), preto sa kolo vyhodnocuje pri odchode z fázy boja
@@ -462,8 +440,8 @@
       if (T.on) {
         T.t++; if (T.wink > 0) T.wink--;
         if (T.t >= T.life + SECRET_GRACE) T.on = false;
-        // tajomstvo: Toasty v TÁBORE V NOCI + ↓ a START naraz (len 1 hráč)
-        if (T.on && game.mode === 1 && F.stage && F.stage.id === 'tabor' && M.kind !== 'secret' && !S.armed) {
+        // tajomstvo: Toasty v TÁBORE V NOCI + ↓ a START naraz (len 1 hráč, len keď IMPOSTOR existuje)
+        if (T.on && game.mode === 1 && F.stage && F.stage.id === 'tabor' && M.kind !== 'secret' && !S.armed && secretOk(F.fighters[0].id)) {
           const c = api.ctls[0];
           if ((c.held.down && c.pressed.start) || (c.pressed.down && c.held.start)) {
             S.armed = true; T.wink = 50; api.sfx('bark');
@@ -475,15 +453,16 @@
 
     // ================================================================= kódy na výbere postavy (tlačidlami, nie písmenami)
     const CODES = [
-      { name: 'TIEN', seq: ['up', 'up', 'down', 'down'], run: codeTien },            // tajný súboj s TIEŇOM
+      { name: 'IMPOSTOR', seq: ['up', 'up', 'down', 'down'], run: codeSecret },      // tajný súboj s IMPOSTOROM
       { name: 'SSJ', seq: ['up', 'up', 'up', 'kiai'], run: codeSsj },                // začať zápas premenený
       { name: 'ROCKY', seq: ['down', 'down', 'down', 'special'], run: codeRocky },   // odomkne Rockyho (ak je), inak „trénuje“
     ];
     const codeLog = [];
-    function codeTien() {
+    function codeSecret() {
       if (game.mode !== 1) { queueToast('TAJNÝ SÚBOJ JE LEN PRE 1 HRÁČA'); return; }
-      if (L.pending) { queueToast('TIEŇ ŤA ČAKÁ HORE NA HORE…'); return; }
-      S.codeTien = true; api.sfx('crack', 0.6); queueToast('TAJNÝ SÚBOJ: TIEŇ!');
+      if (!ROSTER[SECRET_ID]) { queueToast('IMPOSTOR SA EŠTE SKRÝVA…'); return; }
+      if (L.pending) { queueToast('IMPOSTOR SA SKRÝVA V TÁBORE V NOCI…'); return; }     // v HORE cez Toasty v tábore
+      S.codeSecret = true; api.sfx('crack', 0.6); queueToast('TAJNÝ SÚBOJ: IMPOSTOR!');
     }
     function codeSsj(p) { S.ssj[p] = true; api.sfx('kiai'); queueToast('SUPER SAIYAN' + (game.mode === 2 ? ' (HRÁČ ' + (p + 1) + ')' : '') + '!'); }
     function codeRocky() {
@@ -502,12 +481,11 @@
       if (!game.locked[0]) { lockAt = -1; return; }
       if (lockAt < 0) lockAt = api.sceneT;
       if (api.sceneT - lockAt < 18) return;                          // game.js prepne na VS až po 30 snímkach
-      if (L.pending && game.mode === 1) { lockAt = -1; beginLadder(game.picks[0]); }
-      else if (S.codeTien && game.mode === 1) { lockAt = -1; S.codeTien = false; goSecret(null); }
+      if (L.pending && game.mode === 1) { lockAt = -1; goTowerSelect(game.picks[0]); }
+      else if (S.codeSecret && game.mode === 1) { lockAt = -1; S.codeSecret = false; if (!goSecret()) queueToast('IMPOSTOR SI TY!'); }
     }
 
     // výber postavy kreslí game.js; pri 6+ bojovníkoch sa dlhé mená prekrývajú → kým je výber na obrazovke, krátke meno (def.short)
-    const FULL = {};
     function fitSelectNames(on) {
       const n = ORDER.length + 1, gap = n > 3 ? 10 : 24, pw = Math.min(96, Math.floor((W - 24 - (n - 1) * gap) / n));
       ctx.save(); ctx.font = `bold ${pw < 80 ? 9 : 12}px "Trebuchet MS", "Arial Black", Arial, sans-serif`;
@@ -530,7 +508,7 @@
       if (sc === 'title' && entered) {
         if (L.active || L.pending) endLadder();
         restoreLevel();
-        S.codeTien = false; S.ssj = [false, false]; S.armed = false;
+        S.codeSecret = false; S.ssj = [false, false]; S.armed = false;
         if (!portraitsDone) {
           portraitsDone = true;
           for (const id of Object.keys(ROSTER)) portraitOf(id);
@@ -549,7 +527,7 @@
       const F = api.fight;
       if (sc === 'fight' && F && M && M.F === F && !F.paused) trackFight(F);
     });
-    // rýchlejšia chôdza (TIEŇ): len čistý pohyb, útoky a blok rieši game.js / moves.js
+    // rýchlejšia chôdza (def.speed, napr. Rocky): len čistý pohyb, útoky a blok rieši game.js / moves.js
     hooks.input.push((f, o, inp) => {
       const sp = f.def && f.def.speed; if (!sp || sp === 1) return false;
       const h = inp.held || {}, p = inp.pressed || {};
@@ -562,8 +540,7 @@
     hooks.afterHit.push((a, d, m, blocked) => {
       const F = api.fight;
       if (M && F && M.F === F) {
-        if (F.phase === 'fight') { M.hits[a.side]++; if (!isKick(m && m.name)) M.nonKick[a.side] = true; }
-        // silnejší boss / TIEŇ XXL: dorovnanie zranenia po zásahu (nikdy nezabije, K.O. rieši game.js)
+        // silnejší boss: dorovnanie zranenia po zásahu (nikdy nezabije, K.O. rieši game.js)
         const mul = (a.side === 1 && M.dmgMul) || (a.def && a.def.ladderDmg) || 1;
         if (mul > 1 && !blocked && m && m.dmg > 0 && d.hp > 0 && F.phase === 'fight') {
           const extra = Math.round(m.dmg * (a.ssj ? 1.3 : 1) * (mul - 1));
@@ -575,14 +552,13 @@
     hooks.matchStart.push(F => {
       const kind = pendingKind; pendingKind = null;
       M = { F, kind: kind || 'normal', step: kind === 'ladder' ? L.steps[L.idx] : null, lastPhase: F.phase, evaluated: 0,
-            roundsWon: [0, 0], flawless: [0, 0], hits: [0, 0], nonKick: [false, false], ssj: S.ssj.slice(), dmgMul: 0 };
+            roundsWon: [0, 0], flawless: [0, 0], ssj: S.ssj.slice(), dmgMul: 0 };
       if (M.step) M.dmgMul = M.step.dmgMul || 0;
       S.ssj = [false, false];
       T.on = false;
     });
     hooks.roundStart.push(F => {
       if (!M || M.F !== F) return;
-      M.hits = [0, 0]; M.nonKick = [false, false];
       F.fighters.forEach((f, i) => { if (M.ssj[i] || (f.def && f.def.alwaysSsj)) f.ssj = true; });
       if (M.step && M.step.hp) { const o = F.fighters[1]; o.maxHp = o.hp = o.shownHp = M.step.hp; }
     });
@@ -591,37 +567,35 @@
       const won = F.winner === 0;
       if (M.kind === 'secret') {
         S.armed = false;
-        if (won) unlock('TIEN');
+        if (won) unlock('IMPOSTOR');
         if (L.active) { continueLadder(); return true; }
         restoreLevel(); return false;                                   // mimo rebríka bežný koniec (vyhodenie, výsledok)
       }
       if (M.kind === 'ladder' && L.active) {
         L.lostRounds += Math.max(M.roundsWon[1], won ? 0 : 1);
         if (!won) { S.armed = false; api.setScene('hora_cont'); return true; }
-        unlockBeaten(L.steps[L.idx].id);
+        L.freshIdx = unlockBeaten(L.steps[L.idx].id) ? L.idx : -1;
         L.idx++; L.climbFrom = L.idx - 1;
-        if (S.armed) { S.armed = false; goSecret(F.fighters[1].id); return true; }
+        if (S.armed) { S.armed = false; if (goSecret()) return true; }
         continueLadder(); return true;
       }
-      if (S.armed && game.mode === 1 && won) { S.armed = false; goSecret(F.fighters[1].id); return true; }
+      if (S.armed && game.mode === 1 && won) { S.armed = false; if (goSecret()) return true; }
       S.armed = false;
       return false;
     });
     hooks.drawFront.push((stage, F) => { for (const f of F.fighters) if (f.def && f.def.spikes) drawSpikes(f); });
     hooks.drawHud.push(F => {
-      if (M && M.F === F && M.kind === 'ladder' && L.active) text('HORA ' + Math.min(L.idx + 1, L.steps.length) + '/' + L.steps.length, W / 2, 38, 7, 'center', '#ffd28a');
+      if (M && M.F === F && M.kind === 'ladder' && L.active) text('HORA ' + towerOf(L.tower).name + ' ' + Math.min(L.idx + 1, L.steps.length) + '/' + L.steps.length, W / 2, 38, 7, 'center', '#ffd28a');
       if (M && M.F === F && M.kind === 'secret') text('TAJNÝ SÚBOJ', W / 2, 38, 7, 'center', '#c9b8ff');
       if (T.on && T.t < T.life) drawToasty();
     });
 
-    // ================================================================= scéna HORA (veža súperov)
-    function nodePos(i, n) {
-      if (i === n - 1) return { x: 240, y: 38, w: 38, h: 46 };
-      const t = n > 1 ? i / (n - 1) : 0, side = i % 2 ? 1 : -1;
-      return { x: Math.round(240 + side * (46 - t * 20)), y: Math.round(222 - t * 152), w: 28, h: 34 };
-    }
+    // ================================================================= scéna HORA: BATTLE PLAN ako v MK2 (Peťo 2. 10.)
+    // V strede zvislý stĺpec malých portrétov: prvý súper dole, boss hore ako vrchol. Porazení sú stmavení a prečiarknutí,
+    // aktuálny súper má pulzujúci rámik. Hráčov portrét stojí vedľa stĺpca a po výhre plynulo vystúpi o úroveň vyššie (~1 s).
+    // Na 480×270 sa zmestí 10 súperov v jednom stĺpci (portréty 22 px), od 11 súperov dva stĺpce cik-cak (portréty až 28 px).
     function poly(pts, color) { ctx.fillStyle = color; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill(); }
-    function drawMountain(t, sky) {
+    function drawMountain(t, sky) {          // hora za úsvitu (koncovka)
       const g = ctx.createLinearGradient(0, 0, 0, H);
       if (sky === 'dawn') { g.addColorStop(0, '#2b3a78'); g.addColorStop(0.5, '#c86b6b'); g.addColorStop(1, '#ffc26a'); }
       else { g.addColorStop(0, '#0a0f2c'); g.addColorStop(0.55, '#3a2650'); g.addColorStop(1, '#a8536a'); }
@@ -634,61 +608,236 @@
       poly([[56, 270], [240, 16], [424, 270]], '#4b3d63');
       poly([[56, 270], [240, 16], [252, 270]], '#5c4d78');
       poly([[240, 16], [212, 56], [224, 50], [234, 62], [246, 52], [256, 60], [268, 56]], '#e9eef8');
-      if (sky !== 'dawn' && t % 200 < 7) {                               // blesk nad vrcholom (MAJSTER MRAK)
-        ctx.strokeStyle = '#fff6a8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(262, 0); ctx.lineTo(254, 8); ctx.lineTo(262, 12); ctx.lineTo(250, 22); ctx.stroke();
-      }
     }
     function stars(level) { const k = api.clamp(Math.round(level * 4.5), 1, 5); return '★'.repeat(k) + '☆'.repeat(5 - k); }
+
+    const COL = { top: 6, bot: 250, gap: 2, minH: 22, maxH: 28, aspect: 1.2, bossK: 1.25 };
+    const CLIMB0 = 14, CLIMB_LEN = 60, CLIMB_END = CLIMB0 + CLIMB_LEN;   // po výhre: prečiarknutie, potom výstup ~1 s
+    function towerLayout(n) {                // obdĺžniky súperov zdola nahor (posledný = boss), x0/x1 = okraje stĺpca
+      const cx = W / 2, avail = COL.bot - COL.top, g = COL.gap, slots = [];
+      if (n <= 0) return { slots, cols: 1, h: 0, x0: cx, x1: cx };
+      let cols = 1, h = Math.floor((avail - (n - 1) * g) / (n - 1 + COL.bossK));
+      if (h < COL.minH && n > 2) { cols = 2; h = Math.floor((avail - g - (n - 2) * g / 2) / ((n - 2) / 2 + 1 + COL.bossK)); }
+      h = Math.max(12, Math.min(COL.maxH, h));
+      const w = Math.round(h * COL.aspect), hb = n > 1 ? Math.round(h * COL.bossK) : h, wb = Math.round(hb * COL.aspect);
+      const step = cols === 1 ? h + g : (h + g) / 2;
+      const total = n > 1 ? (n - 2) * step + h + g + hb : hb;
+      const base = COL.bot - Math.max(0, Math.floor((avail - total) / 2));     // kratší stĺpec je v strede výšky
+      for (let i = 0; i < n - 1; i++) {
+        const x = cols === 1 ? cx - w / 2 : (i % 2 ? cx + 1 : cx - w - 1);
+        slots.push({ x: Math.round(x), y: Math.round(base - h - i * step), w, h });
+      }
+      const topY = n > 1 ? slots[n - 2].y - g - hb : base - hb;
+      slots.push({ x: Math.round(cx - wb / 2), y: Math.round(topY), w: wb, h: hb, boss: true });
+      return { slots, cols, h, x0: Math.min(...slots.map(r => r.x)), x1: Math.max(...slots.map(r => r.x + r.w)) };
+    }
+    function markerRect(lay, i) {            // hráčov portrét vľavo vedľa stĺpca, na výške súpera i
+      const r = lay.slots[api.clamp(i, 0, lay.slots.length - 1)];
+      const mh = Math.min(32, lay.h + 6), mw = Math.round(mh * COL.aspect);
+      return { x: lay.x0 - 10 - mw, y: Math.round(r.y + r.h / 2 - mh / 2), w: mw, h: mh };
+    }
+    const ease = k => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+    function markerAt(t) {                   // poloha hráča v čase t scény HORA (k = 1 → stojí pri aktuálnom súperovi)
+      const lay = towerLayout(L.steps.length), to = markerRect(lay, L.idx);
+      if (L.climbFrom < 0 || !L.steps.length) return Object.assign(to, { k: 1 });
+      const from = markerRect(lay, L.climbFrom), k = ease(api.clamp((t - CLIMB0) / CLIMB_LEN, 0, 1));
+      return { x: to.x, y: Math.round(from.y + (to.y - from.y) * k), w: to.w, h: to.h, k, fromY: from.y };
+    }
+    function mini(id, x, y, w, h) {          // malý portrét: výrez hlavy a pliec, aby bola tvár čitateľná aj na 22 px
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#2c2342'); g.addColorStop(1, '#0d0a16');
+      ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+      const im = portraitOf(id);
+      if (im) {
+        const sw = im.width * 0.84, sh = Math.min(im.height, sw * h / w);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(im, im.width * 0.08, im.height * 0.02, sw, sh, x, y, w, h);
+      } else if (ROSTER[id]) {
+        const ph = h * 120 / 68;             // ako výrez z portrétu 96×120
+        api.drawFigure(x + w / 2, y + ph + 46 * ph / 120, 1, api.POSES.stand, ROSTER[id], { scale: 1.25 * ph / 120 });
+      }
+      ctx.restore();
+    }
+    function drawX(r, k = 1) {               // červené prečiarknutie porazeného (k > 1 = práve dopadá ako pečiatka)
+      const cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = (r.w / 2 - 2) * k, dy = (r.h / 2 - 2) * k;
+      ctx.save(); ctx.lineCap = 'round';
+      for (const [lw, c] of [[5, '#000'], [2.5, '#e8231b']]) {
+        ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath();
+        ctx.moveTo(cx - dx, cy - dy); ctx.lineTo(cx + dx, cy + dy); ctx.moveTo(cx + dx, cy - dy); ctx.lineTo(cx - dx, cy + dy); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    function bolt(x, y0, y1, seed) {         // blesk MAJSTRA MRAKA nad vrcholom
+      ctx.save(); ctx.strokeStyle = '#fff6a8'; ctx.lineWidth = 2; ctx.shadowColor = '#ffe14a'; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.moveTo(x, y0);
+      for (let y = y0, i = 0; y < y1; i++) { y = Math.min(y1, y + 6); ctx.lineTo(x + (((seed + i * 7) % 5) - 2) * 3, y); }
+      ctx.stroke(); ctx.restore();
+    }
+    function drawBattleBg(t, lay) {          // tmavé pozadie ako v MK2: čierno-fialová noc, červený žiar dole, kamenná veža
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#040208'); g.addColorStop(0.55, '#0c0614'); g.addColorStop(1, '#2a0808');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      for (let i = 0; i < 40; i++) if ((i + Math.floor(t / 30)) % 7) ctx.fillRect((i * 97 + 13) % W, (i * 41) % 150, 1, 1);
+      poly([[0, 270], [0, 214], [60, 186], [118, 222], [170, 198], [208, 230], [272, 230], [312, 194], [368, 228], [420, 182], [480, 208], [480, 270]], '#130c1b');
+      ctx.fillStyle = 'rgba(170,130,220,0.045)';
+      for (let i = 0; i < 3; i++) { const cx = ((i * 190 + t * (0.2 + i * 0.07)) % (W + 200)) - 100; ctx.beginPath(); ctx.ellipse(cx, 70 + i * 62, 90, 8, 0, 0, Math.PI * 2); ctx.fill(); }
+      if (lay && lay.slots.length) drawPillar(lay.x0 - 6, lay.x1 + 6, lay.slots[lay.slots.length - 1].y + 10);
+    }
+    function drawPillar(x0, x1, top, bot = H) {   // kamenná veža za portrétmi
+      const pg = ctx.createLinearGradient(x0, 0, x1, 0);
+      pg.addColorStop(0, '#2c2535'); pg.addColorStop(0.45, '#3a3245'); pg.addColorStop(1, '#1a1522');
+      ctx.fillStyle = pg; ctx.fillRect(x0, top, x1 - x0, bot - top);
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      for (let y = top + 7, row = 0; y < bot; y += 8, row++) {
+        ctx.fillRect(x0, y, x1 - x0, 1);
+        for (let x = x0 + (row % 2 ? 5 : 11); x < x1; x += 12) ctx.fillRect(x, y - 7, 1, 7);
+      }
+      ctx.fillStyle = '#51475f'; ctx.fillRect(x0, top, 1, bot - top);
+      ctx.fillStyle = '#0d0a12'; ctx.fillRect(x1 - 1, top, 1, bot - top);
+    }
+    const V = { layout: null, marker: null, t: 0, drawn: 0 };     // čo sa naposledy nakreslilo (pre testy)
     function drawHora() {
-      const t = api.sceneT, n = L.steps.length;
-      drawMountain(t);
+      const t = api.sceneT, n = L.steps.length, lay = towerLayout(n);
+      drawBattleBg(t, lay);
       if (!n) return;
-      // chodník
-      ctx.save(); ctx.strokeStyle = 'rgba(255,230,170,0.55)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); for (let i = 0; i < n; i++) { const p = nodePos(i, n); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); } ctx.stroke(); ctx.restore();
+      const intro = L.idx === 0 && L.climbFrom < 0;                // prvé zobrazenie: veža narastie zdola nahor
+      const climbing = L.climbFrom >= 0, arrived = !climbing || t >= CLIMB_END - 4;
+      // vrchol: žiara a blesky
+      const b = lay.slots[n - 1], bx = b.x + b.w / 2, by = b.y + b.h / 2;
+      const rg = ctx.createRadialGradient(bx, by, 4, bx, by, 52);
+      rg.addColorStop(0, 'rgba(255,96,40,0.38)'); rg.addColorStop(1, 'rgba(255,96,40,0)');
+      ctx.fillStyle = rg; ctx.fillRect(bx - 56, by - 56, 112, 112);
+      if (t % 160 < 6) { bolt(b.x - 12, 0, by, 3); bolt(b.x + b.w + 12, 0, by - 4, 8); }
       // súperi zdola nahor
       for (let i = 0; i < n; i++) {
-        const p = nodePos(i, n), cur = i === L.idx, done = i < L.idx;
-        const hl = cur ? (Math.floor(t / 8) % 2 ? '#ffd200' : '#ff8a00') : done ? '#4a8a3a' : '#2b2440';
-        face(L.steps[i].id, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h, hl, done);
-        if (done) text('✔', p.x, p.y + 6, 14, 'center', '#7dff6a');
+        if (intro && t < i * 3) continue;
+        const r = lay.slots[i], st = L.steps[i], done = i < L.idx, cur = i === L.idx;
+        ctx.fillStyle = '#000'; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
+        mini(st.id, r.x, r.y, r.w, r.h);
+        if (done) {
+          ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+          const stamp = climbing && i === L.climbFrom;
+          if (!stamp || t >= 3) drawX(r, stamp && t < 12 ? 1 + (12 - t) / 12 * 0.7 : 1);
+        }
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = done ? '#2a2436' : st.boss ? '#d4a52a' : st.rival ? '#c0393f' : '#5a4f72';
+        ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3);
+        if (cur && arrived) {
+          const p = 0.5 + 0.5 * Math.sin(t / 5);
+          ctx.strokeStyle = `rgba(255,210,0,${(0.15 + 0.35 * p).toFixed(2)})`; ctx.lineWidth = 3; ctx.strokeRect(r.x - 4.5, r.y - 4.5, r.w + 9, r.h + 9);
+          ctx.strokeStyle = `rgb(255,${Math.round(90 + 120 * p)},0)`; ctx.lineWidth = 2; ctx.strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
+        }
+        if (st.boss || st.rival) text(st.boss ? 'BOSS' : 'RIVAL', lay.x1 + 9, r.y + r.h / 2 + 3, 7, 'left', done ? '#5a4f6a' : st.boss ? '#ffcf4a' : '#ff6b6b');
+        else if (i === L.freshIdx && done && t >= 12 && (t < 60 || t % 30 < 22)) text('NOVÁ POSTAVA!', lay.x1 + 9, r.y + r.h / 2 + 3, 7, 'left', '#7dff6a');
       }
-      // hráč: pri príchode po výhre vyšplhá z predošlého súpera
-      const climbK = L.climbFrom >= 0 ? Math.min(1, t / 50) : 1;
-      const a = nodePos(Math.max(0, L.climbFrom >= 0 ? L.climbFrom : L.idx), n), b = nodePos(Math.min(L.idx, n - 1), n);
-      const side = q => (q.x < 240 ? -1 : q.x > 240 ? 1 : -1);
-      const ax = a.x + side(a) * (a.w / 2 + 15), bx = b.x + side(b) * (b.w / 2 + 15);
-      const mx = ax + (bx - ax) * climbK, my = a.y + (b.y - a.y) * climbK - Math.sin(Math.PI * climbK) * 10;
-      face(L.player, Math.round(mx - 10), Math.round(my - 12), 20, 24, '#3fa9ff');
-      // ľavý panel: hráč
-      const st = L.steps[Math.min(L.idx, n - 1)];
-      ctx.fillStyle = 'rgba(8,6,16,0.72)'; ctx.fillRect(6, 10, 132, 190); ctx.fillRect(W - 146, 10, 140, 190);
-      bigText('HORA', 72, 42, 30);
-      text('výstup na vrchol', 72, 56, 8, 'center', '#ffd28a');
-      face(L.player, 42, 66, 60, 75, '#3fa9ff');
-      text(nameOf(L.player), 72, 156, nameOf(L.player).length > 12 ? 8 : 10, 'center', '#3fa9ff');
-      text('Pokračovania: ' + L.continues, 72, 172, 8, 'center', '#ccc');
-      text(L.lostRounds ? 'Prehraté kolá: ' + L.lostRounds : 'Zatiaľ bez prehratého kola', 72, 186, 7, 'center', L.lostRounds ? '#ccc' : '#7dff6a');
-      // pravý panel: súper
-      const rx = W - 76;
-      text('SÚPER ' + (Math.min(L.idx, n - 1) + 1) + ' / ' + n, rx, 28, 9, 'center', '#ffd28a');
-      face(st.id, rx - 30, 36, 60, 75, '#ffd200');
-      text(nameOf(st.id), rx, 128, nameOf(st.id).length > 12 ? 8 : 11, 'center', '#ffd200');
-      text(st.boss ? 'STRÁŽCA VRCHOLU' : 'ARÉNA', rx, 146, 7, 'center', '#aaa');
-      text(stageName(st.stage), rx, 158, 9, 'center', '#fff');
-      text(stars(st.level), rx, 176, 10, 'center', '#ffb300');
-      if (st.hp && st.hp !== 100) text('ŽIVOT ' + st.hp, rx, 190, 7, 'center', '#ff9f9f');
-      if (t % 60 < 42) text(touchUI() ? 'ťukni = do boja' : 'ÚDER / ENTER = do boja      ESC = menu', W / 2, 262, 9, 'center', '#fff');
+      // hráč vedľa stĺpca (po výhre vystúpi o úroveň vyššie)
+      const m = markerAt(t);
+      const mx = intro ? Math.round(m.x - Math.max(0, 1 - t / 24) * (m.x + m.w + 12)) : m.x;
+      if (climbing && m.k < 1) { ctx.fillStyle = 'rgba(63,169,255,0.22)'; ctx.fillRect(mx + m.w / 2 - 1, m.y + m.h, 2, Math.max(0, m.fromY - m.y)); }
+      ctx.fillStyle = '#000'; ctx.fillRect(mx - 2, m.y - 2, m.w + 4, m.h + 4);
+      mini(L.player, mx, m.y, m.w, m.h);
+      ctx.strokeStyle = '#3fa9ff'; ctx.lineWidth = 2; ctx.strokeRect(mx - 1, m.y - 1, m.w + 2, m.h + 2);
+      const ay = m.y + m.h / 2;
+      ctx.fillStyle = '#3fa9ff'; ctx.beginPath(); ctx.moveTo(mx + m.w + 3, ay - 4); ctx.lineTo(mx + m.w + 8, ay); ctx.lineTo(mx + m.w + 3, ay + 4); ctx.closePath(); ctx.fill();
+      text('1P', mx - 4, ay + 3, 8, 'right', '#3fa9ff');
+      Object.assign(V, { layout: lay, marker: { x: mx, y: m.y, w: m.w, h: m.h, k: m.k }, t, drawn: V.drawn + 1 });
+      // ľavá strana: hlavička, veža a hráč
+      const tw = towerOf(L.tower);
+      bigText('HORA', 74, 38, 30);
+      text('BATTLE PLAN', 74, 51, 9, 'center', '#ff5a3c');
+      text('VEŽA ' + tw.name, 74, 63, 8, 'center', tw.color);
+      face(L.player, 50, 68, 48, 60, '#3fa9ff');
+      text(nameOf(L.player), 74, 142, nameOf(L.player).length > 12 ? 8 : 10, 'center', '#3fa9ff');
+      text('Pokračovania: ' + L.continues, 74, 157, 8, 'center', '#ccc');
+      text(L.lostRounds ? 'Prehraté kolá: ' + L.lostRounds : 'Zatiaľ bez prehratého kola', 74, 170, 7, 'center', L.lostRounds ? '#ccc' : '#7dff6a');
+      // pravá strana: aktuálny súper
+      const ci = Math.min(L.idx, n - 1), st = L.steps[ci], rx = W - 74;
+      text('SÚPER ' + (ci + 1) + ' / ' + n, rx, 30, 9, 'center', '#ffd28a');
+      face(st.id, rx - 24, 38, 48, 60, st.boss ? '#d4a52a' : st.rival ? '#e0453c' : '#ffd200');
+      text(nameOf(st.id), rx, 114, nameOf(st.id).length > 12 ? 8 : 10, 'center', '#ffd200');
+      let y = 128;
+      if (st.boss || st.rival) { text(st.boss ? 'STRÁŽCA VRCHOLU' : 'VEĽKÝ RIVAL', rx, y, 8, 'center', st.boss ? '#ffcf4a' : '#ff6b6b'); y += 13; }
+      text('ARÉNA: ' + stageName(st.stage), rx, y, 8, 'center', '#fff'); y += 15;
+      text(stars(st.level), rx, y, 10, 'center', '#ffb300'); y += 13;
+      if (st.hp && st.hp !== 100) text('ŽIVOT ' + st.hp, rx, y, 7, 'center', '#ff9f9f');
+      const ready = climbing ? t > CLIMB_END : t > 25;
+      if (ready && t % 60 < 42) text(touchUI() ? 'ťukni = do boja' : 'ÚDER / ENTER = do boja      ESC = menu', W / 2, 265, 8, 'center', '#fff');
     }
     api.registerScene('hora', {
       update() {
-        const t = api.sceneT, menu = api.menu;
+        const t = api.sceneT, menu = api.menu, climbing = L.climbFrom >= 0;
         if (t === 1) api.music('title');
         if (menu.back) { endLadder(); api.setScene('title'); api.music('title'); return; }
-        if (L.climbFrom >= 0 && t === 50) { api.sfx('confirm'); }
-        if ((menu.ok && t > 25) || t > 230) { L.climbFrom = -1; goLadderFight(); }
+        if (climbing) {
+          if (t === 3) api.sfx('punch', 0.5);             // pečiatka na porazenom
+          if (t === CLIMB0) api.sfx('whoosh', 0.7);
+          if (t === CLIMB_END) api.sfx('confirm');
+        }
+        const ready = climbing ? t > CLIMB_END : t > 25;     // výstup sa nepreskočí, ani keď sa po výhre ďalej mláti do tlačidiel
+        if ((menu.ok && ready) || t > 240) { L.climbFrom = -1; L.freshIdx = -1; goLadderFight(); }   // ťuk na mobile = menu.ok
       },
       draw: drawHora,
+    });
+
+    // ================================================================= VÝBER VEŽE (ako v MK: NOVICE / WARRIOR / MASTER)
+    // Tri veže s malými portrétmi súperov (zdola nahor, boss hore), názov a počet súperov. ← → a ÚDER/ENTER, alebo ťuk na vežu.
+    const TCX = [110, 240, 370], TBOT = 226;
+    function towerColumns() {
+      return TOWERS.map((tw, k) => {
+        const steps = buildLadder(L.player, tw.key), slots = [], h = 16, hb = 21;
+        let y = TBOT;
+        steps.forEach((st, i) => {
+          const hh = i === steps.length - 1 ? hb : h, ww = Math.round(hh * COL.aspect);
+          y -= hh; slots.push({ x: Math.round(TCX[k] - ww / 2), y, w: ww, h: hh }); y -= 2;
+        });
+        const x0 = Math.min(...slots.map(r => r.x)), x1 = Math.max(...slots.map(r => r.x + r.w));
+        return { tw, steps, slots, x0, x1, top: slots.length ? slots[slots.length - 1].y : TBOT, foes: steps.filter(st => !st.boss).length, boss: steps.some(st => st.boss) };
+      });
+    }
+    const foesText = n => n + (n === 1 ? ' SÚPER' : n <= 4 ? ' SÚPERI' : ' SÚPEROV');
+    function towerAt(pos) {                  // ťuk: ktorá veža je pod prstom (-1 = žiadna)
+      const k = TCX.findIndex(cx => Math.abs(pos.x - cx) < 60);
+      return k >= 0 && pos.y > 30 && pos.y < 262 ? k : -1;
+    }
+    api.registerScene('hora_veza', {
+      update() {
+        const t = api.sceneT, menu = api.menu;
+        if (menu.back) { startHoraSelect(); return; }                       // späť na výber postavy
+        if (menu.left || menu.right) { TS.sel = (TS.sel + (menu.right ? 1 : TOWERS.length - 1)) % TOWERS.length; api.sfx('select'); }
+        if (menu.tapPos) { const k = towerAt(menu.tapPos); if (k < 0) return; TS.sel = k; }   // ťuk mimo veží nič nepotvrdí
+        if (menu.ok && t > 30) { api.sfx('confirm'); beginLadder(L.player, TOWERS[TS.sel].key); }   // pol sekundy: mlátenie ÚDERU z výberu postavy vežu nevyberie
+      },
+      draw() {
+        const t = api.sceneT, cols = TS.cols || (TS.cols = towerColumns());
+        drawBattleBg(t, null);
+        bigText('VYBER SI VEŽU', W / 2, 30, 24);
+        cols.forEach((c, k) => {
+          const sel = k === TS.sel;
+          if (c.slots.length) { drawPillar(c.x0 - 5, c.x1 + 5, c.top + 8, TBOT + 6); ctx.fillStyle = '#1a1522'; ctx.fillRect(c.x0 - 8, TBOT + 4, c.x1 - c.x0 + 16, 4); }
+          c.slots.forEach((r, i) => {
+            ctx.fillStyle = '#000'; ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+            mini(c.steps[i].id, r.x, r.y, r.w, r.h);
+            const st = c.steps[i];
+            ctx.strokeStyle = st.boss ? '#d4a52a' : st.rival ? '#c0393f' : '#5a4f72'; ctx.lineWidth = 1; ctx.strokeRect(r.x - 1.5, r.y - 1.5, r.w + 3, r.h + 3);
+            if (!sel) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
+          });
+          if (sel && c.slots.length) {                                     // vybraná veža: pulzujúci rám a hráč pri jej spodku
+            const p = 0.5 + 0.5 * Math.sin(t / 5), b = c.slots[0];
+            ctx.strokeStyle = `rgb(255,${Math.round(90 + 120 * p)},0)`; ctx.lineWidth = 2;
+            ctx.strokeRect(c.x0 - 9, c.top - 5, c.x1 - c.x0 + 18, TBOT - c.top + 10);
+            const mw = 22, mh = 18, mx = c.x0 - 14 - mw, my = Math.round(b.y + b.h / 2 - mh / 2);
+            ctx.fillStyle = '#000'; ctx.fillRect(mx - 2, my - 2, mw + 4, mh + 4);
+            mini(L.player, mx, my, mw, mh);
+            ctx.strokeStyle = '#3fa9ff'; ctx.lineWidth = 2; ctx.strokeRect(mx - 1, my - 1, mw + 2, mh + 2);
+            ctx.fillStyle = '#3fa9ff'; ctx.beginPath(); ctx.moveTo(mx + mw + 3, my + mh / 2 - 4); ctx.lineTo(mx + mw + 8, my + mh / 2); ctx.lineTo(mx + mw + 3, my + mh / 2 + 4); ctx.closePath(); ctx.fill();
+          }
+          text(c.tw.name, TCX[k], 245, sel ? 14 : 12, 'center', sel ? c.tw.color : '#8a8098');
+          text(foesText(c.foes) + (c.boss ? ' + BOSS' : ''), TCX[k], 257, 8, 'center', sel ? '#fff' : '#6f6680');
+        });
+        if (t % 60 < 42) text(touchUI() ? 'ťukni na vežu' : '← → výber   ÚDER / ENTER = do boja   ESC = späť', W / 2, 268, 7, 'center', '#bbb');
+      },
     });
 
     // ================================================================= CONTINUE?
@@ -737,23 +886,23 @@
         const f = fake(S.opp, 'idle'); f.x = W / 2; f.y = 238; f.t = t;
         if (ROSTER[S.opp]) api.drawFighter(f);
         bigText('TAJNÝ SÚBOJ', W / 2, 46, 34);
-        text(nameOf(S.opp) + ' ŤA VYZÝVA…', W / 2, 70, 12, 'center', '#c9b8ff');
-        text(unlocked.has('TIEN') ? 'Ukáž mu, kto je tu majster!' : 'Ak vyhráš, TIEŇ bude tvoj.', W / 2, 262, 9, 'center', '#aaa');
+        text(fullName(S.opp) + ' ŤA VYZÝVA…', W / 2, 70, 12, 'center', '#c9b8ff');
+        text(unlocked.has('IMPOSTOR') ? 'Ukáž mu, kto je tu majster!' : 'Ak vyhráš, IMPOSTOR bude tvoj.', W / 2, 262, 9, 'center', '#aaa');
       },
     });
 
     // ================================================================= KONCOVKA (príbeh, blahoželanie, titulky)
     const STORY = {
       matusko: b => ['Matúško vyšiel až na vrchol hory.', b + ' sa uklonil a povedal:', '„Tvoje KIAI je silnejšie ako hrom.“', 'A Šimon uznal, že mladší brat je majster.', 'Aspoň do večera.'],
-      zlaty: b => ['Zlatý Matúško svietil na vrchole', 'hory ako slnko.', b + ' si musel zakryť oči', 'a uznal: „Toto je skutočný', 'Super Saiyan.“'],
+      zlaty: b => ['Golden Matúško svietil na vrchole', 'hory ako slnko.', b + ' si musel zakryť oči', 'a uznal: „Toto je skutočný', 'Super Saiyan.“'],
       simon: b => ['Šimon vyšiel až na vrchol hory', 'a zahral také husľové sólo,', 'že sa rozostúpili aj mraky.', b + ' tlieskal. Matúško tiež…', '…a hneď chcel odvetu.'],
-      tien: b => ['Tieň vystúpil z tmy', 'a zdolal celú horu.', 'Nikto nevie, kto sa pod ním skrýva…', '…ale Rocky ho podľa čuchu', 'spoznal hneď.'],
-      boss: (b, me) => [me + ' porazil všetkých,', 'aj sám seba.', 'Na vrchole pochopil, že najsilnejší', 'je ten, kto má brata,', 's ktorým sa dá pobiť aj zasmiať.'],
+      impostor: b => ['Impostor vyliezol až na vrchol hory', 'a nikto si nič nevšimol.', b + ' sa uklonil…', '…a vtom niekto zakričal:', '„Emergency meeting!“'],
+      boss: (b, me) => [me + ' zdolal vlastnú horu.', 'Na vrchole bolo ticho a prázdno.', 'Pochopil, že najsilnejší', 'je ten, kto má brata,', 's ktorým sa dá pobiť aj zasmiať.'],
       other: (b, me) => [me + ' zdolal horu!', 'Všetci súperi sa uklonili', 'a ' + b + ' odovzdal vrchol.', 'Rocky dostal najväčšiu kosť', 'na svete.'],
     };
     function storyLines() {
       const me = L.player, last = L.steps[L.steps.length - 1], nice = last ? pretty(nameOf(last.id)) : 'Strážca vrcholu';
-      const key = me === 'zlaty' ? 'zlaty' : me === 'tien' || me === 'tien_xxl' ? 'tien' : me === 'boss' ? 'boss' : baseOf(me) === 'matusko' ? 'matusko' : baseOf(me) === 'simon' ? 'simon' : 'other';
+      const key = me === 'zlaty' ? 'zlaty' : me === 'boss' ? 'boss' : me === SECRET_ID ? 'impostor' : me === 'matusko' || me === 'simon' ? me : 'other';
       return STORY[key](nice, pretty(nameOf(me)));
     }
     function creditLines() {
@@ -774,15 +923,34 @@
       return out;
     }
     const CREDITS_EXTRA = [];   // Master môže doplniť napr. ['NÁPAD A RÉŽIA', '…'] — nič nevymýšľame
-    const E = { stage: 0, t: 0, lines: null, credits: null, confetti: [] };
-    const E_DUR = [480, 380, 0, 360];      // príbeh, blahoželanie, titulky (podľa dĺžky), záver
+    const E = { stage: 0, t: 0, lines: null, credits: null, confetti: [], bday: null };
+    const E_DUR = [480, 380, 0, 360];      // príbeh, blahoželanie (len okolo narodenín), titulky (podľa dĺžky), záver
     function endingDone() { endLadder(); api.setScene('title'); api.music('title'); }
+    // blahoželanie len okolo narodenín: game.js dá api.birthday() → { age, name } (1.–10. októbra), inak null
+    function birthday() {
+      try { const b = typeof api.birthday === 'function' ? api.birthday() : null; return b && typeof b === 'object' && b.age > 0 ? b : null; }
+      catch (e) { return null; }
+    }
+    function drawCake(x, y, age) {          // kreslená torta s vekom na stolíku (obrázok img/cake_simon má sviečky „12“)
+      ctx.fillStyle = '#4a2c18'; ctx.fillRect(x - 34, y - 4, 68, 4); ctx.fillRect(x - 28, y, 4, 14); ctx.fillRect(x + 24, y, 4, 14);
+      ctx.fillStyle = '#5a3a24'; ctx.fillRect(x - 26, y - 26, 52, 22);
+      ctx.fillStyle = '#7a4e30'; ctx.fillRect(x - 18, y - 40, 36, 14);
+      ctx.fillStyle = '#ffe9f2'; ctx.fillRect(x - 26, y - 28, 52, 3); ctx.fillRect(x - 18, y - 42, 36, 3);
+      ctx.fillStyle = '#ff4d6d';
+      for (let i = -22; i <= 22; i += 11) { ctx.beginPath(); ctx.arc(x + i, y - 27, 2, 0, Math.PI * 2); ctx.fill(); }
+      const digits = String(age), dw = 11;
+      [...digits].forEach((d, i) => {
+        const cx = x + (i - (digits.length - 1) / 2) * dw;
+        text(d, cx, y - 44, 15, 'center', '#ffd84a');
+        ctx.fillStyle = (api.sceneT + i * 5) % 12 < 6 ? '#ffb02e' : '#ffe14a';
+        ctx.beginPath(); ctx.ellipse(cx, y - 63, 2, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      });
+    }
     api.registerScene('hora_koniec', {
       update() {
         const menu = api.menu;
-        if (api.sceneT === 1) { Object.assign(E, { stage: 0, t: 0, lines: storyLines(), credits: creditLines(), confetti: [] }); api.music('result'); api.sfx('confirm'); }
-        E.t++;
-        if (E.stage === 1 && E.t === 20) api.say('birthday');
+        if (api.sceneT === 1) { Object.assign(E, { stage: 0, t: 0, lines: storyLines(), credits: creditLines(), confetti: [], bday: birthday() }); api.music('result'); api.sfx('confirm'); }
+        E.t++;                                                       // hlas „birthday“ nie (Peťo: „nech hlas nič nepovie“)
         if (E.stage >= 1 && E.t % 4 === 0) E.confetti.push({ x: api.rnd(0, W), y: -5, vy: api.rnd(0.8, 2), vx: api.rnd(-0.5, 0.5), c: ['#ff4d4d', '#ffd200', '#4dd2ff', '#7dff6a', '#ff7ae0'][Math.floor(api.rnd(0, 5))] });
         for (const c of E.confetti) { c.x += c.vx; c.y += c.vy; }
         while (E.confetti.length && E.confetti[0].y > H + 10) E.confetti.shift();
@@ -791,6 +959,7 @@
         const dur = E.stage === 2 ? Math.ceil((creditsH + H + 20) / 0.6) : E_DUR[E.stage];
         if (E.t >= dur || (menu.ok && E.t > 40)) {
           E.stage++; E.t = 0;
+          if (E.stage === 1 && !E.bday) E.stage = 2;                // mimo narodenín bez blahoželania rovno titulky
           if (E.stage > 3) endingDone();
         }
       },
@@ -812,14 +981,21 @@
           }
         } else if (E.stage === 1) {
           const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1b0b2e'); g.addColorStop(1, '#3b0d0d'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-          // Šimon nesie Matúškovi tortu „12“ (img/cake_simon; nezrkadliť, číslo by bolo naopak), Matúško sa teší
-          const im = IMG['img/cake_simon'];
+          // Šimon nesie Matúškovi tortu „12“ (img/cake_simon; nezrkadliť, číslo by bolo naopak), Matúško sa teší.
+          // Obrázok má sviečky 12 → v inom roku Šimon bez torty a kreslená torta s vekom z api.birthday().
+          const bd = E.bday || { age: 12, name: 'MATÚŠKO' }, im = bd.age === 12 && IMG['img/cake_simon'];
           if (im) ctx.drawImage(im, Math.round(84 - im.width / 2), 262 - im.height);
-          else if (ROSTER.simon) { const f = fake('simon', 'idle'); f.x = 84; f.y = 262; f.t = t; api.drawFighter(f); }
+          else {
+            if (ROSTER.simon) { const f = fake('simon', 'idle'); f.x = 84; f.y = 262; f.t = t; api.drawFighter(f); }
+            drawCake(W / 2, 248, bd.age);
+          }
           if (ROSTER.matusko) { const f = fake('matusko', 'win'); f.x = 396; f.y = 262; f.t = t; f.facing = -1; api.drawFighter(f); }
           for (const c of E.confetti) { ctx.fillStyle = c.c; ctx.fillRect(Math.round(c.x), Math.round(c.y), 3, 4); }
           bigText('VŠETKO NAJLEPŠIE', W / 2, 58, 34);
-          bigText('K 12. NARODENINÁM, MATÚŠKO!', W / 2, 94, 24);
+          const wish = 'K ' + bd.age + '. NARODENINÁM, ' + String(bd.name || 'MATÚŠKO').toUpperCase() + '!';
+          ctx.font = 'bold 24px Impact, "Arial Black", "Trebuchet MS", sans-serif';
+          const ww = ctx.measureText(wish).width;
+          bigText(wish, W / 2, 94, ww > W - 24 ? Math.floor(24 * (W - 24) / ww) : 24);
           if (t > 60) text('Nech ti KIAI vydrží celý rok!', W / 2, 122, 12, 'center', '#ffd28a');
         } else if (E.stage === 2) {
           ctx.fillStyle = '#05040a'; ctx.fillRect(0, 0, W, H);
@@ -856,6 +1032,8 @@
     api.ladder = {
       LADDER, CODES, codeLog, state: L, secret: S, toastyState: T, ending: E, get match() { return M; },
       unlocked: () => [...unlocked], unlock, start: startHoraSelect, buildLadder, showToasty, portraitOf, endLadder,
+      towerLayout, markerAt, view: V, CLIMB: { start: CLIMB0, len: CLIMB_LEN, end: CLIMB_END }, RETIRED_IDS,
+      TOWERS, towers: TS, towerColumns, beginLadder,
     };
   },
 });

@@ -25,7 +25,7 @@
     const FREE = new Set(['idle', 'walk', 'block']);
     const LINKS = { punch: 9, punch2: 7 };                // článok komba → od ktorej snímky sa dá napojiť ďalší (po aktívnych snímkach)
     const SPECIAL_BY = { matusko: 'tornado', simon: 'teleport' };
-    const SPECIAL_LABEL = { tornado: 'TORNÁDO', teleport: 'TELEPORT' };
+    const SPECIAL_LABEL = { tornado: 'TORNADO', teleport: 'TELEPORT' };
 
     // ------------------------------------------------------------------ dáta útokov (x/y = zásahová zóna voči chodidlám a smeru pohľadu)
     Object.assign(MOVE, {
@@ -333,7 +333,7 @@
     }
     function drawTornado(f) {
       const t = f.t;
-      if (t < 40) api.text('TORNÁDO!', f.x, f.y - 160, 12, 'center', '#b8ff6a');
+      if (t < 40) api.text('TORNADO!', f.x, f.y - 160, 12, 'center', '#b8ff6a');
       if (!tornadoSpin(f)) return;
       ctx.save();
       for (let i = 0; i < 3; i++) {
@@ -393,10 +393,10 @@
       free: f => FREE.has(f.state) && f.onGround,
       help: [   // [pohyb, klávesnica P1, klávesnica P2, ovládač PS, dotyk]
         ['UPPERCUT', 'S + F', '↓ + K', 'L1 + □', 'páčka dole + ÚDER'],
-        ['PODKOP', 'S + G', '↓ + L', 'L1 + ✕', 'páčka dole + KOP'],
-        ['LETIACI KOP', 'VPRED VPRED G', 'VPRED VPRED L', '▶ ▶ ✕', 'páčka vpred 2× + KOP'],
-        ['KOMBO 3', 'F F G', 'K K L', '□ □ ✕', 'ÚDER ÚDER KOP'],
-        ['TORNÁDO (Matúško)', 'S VPRED G', '↓ VPRED L', '↓ ▶ ✕', 'páčka dole, vpred + KOP'],
+        ['SWEEP', 'S + G', '↓ + L', 'L1 + ✕', 'páčka dole + KOP'],
+        ['FLYING KICK', 'VPRED VPRED G', 'VPRED VPRED L', '▶ ▶ ✕', 'páčka vpred 2× + KOP'],
+        ['COMBO 3', 'F F G', 'K K L', '□ □ ✕', 'ÚDER ÚDER KOP'],
+        ['TORNADO (Matúško)', 'S VPRED G', '↓ VPRED L', '↓ ▶ ✕', 'páčka dole, vpred + KOP'],
         ['TELEPORT (Šimon)', 'S W', '↓ ↑', '↓ ▲', 'páčka dole, hore'],
       ],
     };

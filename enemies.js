@@ -48,18 +48,18 @@
     // ♪ nepriateľov zachytáva tento modul (husle sú len poistka); moveSpecial: null = bez Šimonovho teleportu / Matúškovho tornáda z moves.js
     const COMMON = { special: 'husle', finisher: 'babality', moveSpecial: null };
     const DEFS = {
-      ninja_fire: { ...COMMON, ...SP.ninja_fire, enKind: 'fire', name: 'OHNIVÝ NINJA', specialName: 'LANO',
+      ninja_fire: { ...COMMON, ...SP.ninja_fire, enKind: 'fire', name: 'FIRE NINJA', specialName: 'ROPE',
         gi: '#f2a516', giDark: '#b5680c', belt: '#2b1a0a', hair: '#1e1408',
-        blurb: ['LANO: vzad, vpred, úder', '„GET OVER HERE!“ Ohnivý kop:', '↓, vpred, kop.'] },
-      ninja_ice: { ...COMMON, ...SP.ninja_ice, enKind: 'ice', name: 'ĽADOVÝ NINJA', specialName: 'ĽADOVÁ GUĽA',
+        blurb: ['ROPE: vzad, vpred, úder', '„GET OVER HERE!“ FIRE KICK:', '↓, vpred, kop.'] },
+      ninja_ice: { ...COMMON, ...SP.ninja_ice, enKind: 'ice', name: 'ICE NINJA', specialName: 'ICE BALL',
         gi: '#47b8ff', giDark: '#1f6fae', belt: '#e8f6ff', hair: '#10202e',
-        blurb: ['ĽADOVÁ GUĽA: ↓, vpred, úder', 'zmrazí súpera.', 'ŠMYK: vzad + úder + kop.'] },
-      ninja_shadow: { ...COMMON, ...SP.ninja_shadow, enKind: 'shadow', name: 'TIEŇOVÝ NINJA', specialName: 'ZMIZNUTIE',
+        blurb: ['ICE BALL: ↓, vpred, úder', 'zmrazí súpera.', 'SLIDE: vzad + úder + kop.'] },
+      ninja_shadow: { ...COMMON, ...SP.ninja_shadow, enKind: 'shadow', name: 'SHADOW NINJA', specialName: 'VANISH',
         gi: '#4b4f5a', giDark: '#25272d', belt: '#111111', hair: '#111111',
-        blurb: ['NEVIDITEĽNOSŤ:', '↑, ↑, ↓ + KIAI.', 'Kde je? Tam je!'] },
-      boss: { ...COMMON, ...SP.boss, enKind: 'boss', name: 'MAJSTER MRAK', specialName: 'BLESK', hp: 130, height: 158,
+        blurb: ['INVISIBILITY:', '↑, ↑, ↓ + KIAI.', 'Kde je? Tam je!'] },
+      boss: { ...COMMON, ...SP.boss, enKind: 'boss', name: 'MASTER STORM', specialName: 'LIGHTNING', hp: 130, height: 158,
         gi: '#1d2a4a', giDark: '#111a30', belt: '#e67e22', hair: '#f4f4f4',
-        blurb: ['BLESK: ↓, vpred, úder', 'TELEPORT: ↓, ↑', 'TORPÉDO: vzad, vzad, vpred'] },
+        blurb: ['LIGHTNING: ↓, vpred, úder', 'TELEPORT: ↓, ↑', 'TORPEDO: vzad, vzad, vpred'] },
     };
     for (const [id, def] of Object.entries(DEFS)) api.registerFighter(id, def, false);
 
@@ -613,14 +613,14 @@
     api.enemies = {
       ids: Object.keys(DEFS), sprites: SP, moves: Object.keys(CD),
       help: [   // [pohyb, klávesnica P1, klávesnica P2, ovládač PS, dotyk] — ako api.moves.help (OVLÁDANIE, COMBOS.md)
-        ['LANO (OHNIVÝ NINJA)', 'VZAD VPRED F', 'VZAD VPRED K', '◀ ▶ □', 'vzad, vpred + ÚDER'],
-        ['OHNIVÝ KOP', 'S VPRED G', '↓ VPRED L', '↓ ▶ ✕', 'dole, vpred + KOP'],
-        ['ĽADOVÁ GUĽA (ĽADOVÝ)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'dole, vpred + ÚDER'],
-        ['ŠMYK (ĽADOVÝ)', 'VZAD + F + G', 'VZAD + K + L', '◀ + □ + ✕', 'vzad + ÚDER + KOP'],
-        ['NEVIDITEĽNOSŤ (TIEŇOVÝ)', 'W W S R', '↑ ↑ ↓ I', '▲ ▲ ▼ ○', 'hore, hore, dole + KIAI'],
-        ['BLESK (MAJSTER MRAK)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'dole, vpred + ÚDER'],
-        ['TELEPORT (MRAK)', 'S W', '↓ ↑', '▼ ▲', 'dole, hore'],
-        ['TORPÉDO (MRAK)', 'VZAD VZAD VPRED', 'VZAD VZAD VPRED', '◀ ◀ ▶', 'vzad, vzad, vpred'],
+        ['ROPE (FIRE NINJA)', 'VZAD VPRED F', 'VZAD VPRED K', '◀ ▶ □', 'vzad, vpred + ÚDER'],
+        ['FIRE KICK', 'S VPRED G', '↓ VPRED L', '↓ ▶ ✕', 'dole, vpred + KOP'],
+        ['ICE BALL (ICE NINJA)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'dole, vpred + ÚDER'],
+        ['SLIDE (ICE NINJA)', 'VZAD + F + G', 'VZAD + K + L', '◀ + □ + ✕', 'vzad + ÚDER + KOP'],
+        ['INVISIBILITY (SHADOW)', 'W W S R', '↑ ↑ ↓ I', '▲ ▲ ▼ ○', 'hore, hore, dole + KIAI'],
+        ['LIGHTNING (MASTER STORM)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'dole, vpred + ÚDER'],
+        ['TELEPORT (STORM)', 'S W', '↓ ↑', '▼ ▲', 'dole, hore'],
+        ['TORPEDO (STORM)', 'VZAD VZAD VPRED', 'VZAD VZAD VPRED', '◀ ◀ ▶', 'vzad, vzad, vpred'],
       ],
       force(f, mv, ignoreCd = false) {   // spustí schopnosť (test, scény); bez cooldownu, ak ignoreCd
         const F = fight(); if (!F) return false;

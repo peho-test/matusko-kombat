@@ -38,7 +38,7 @@
     const DEF = {
       name: 'ROCKY', short: 'ROCKY', rocky: true,
       gi: '#d9a441', giDark: '#a86f24', belt: '#c0392b', hair: '#b07a26',   // farby kreslených náhrad (vyhodenie, portrét)
-      special: 'kost', specialName: 'KOSŤ', kiaiName: 'HAV!', finisher: 'rockyality',   // kiaiName: nápis ukazovateľa v HUD
+      special: 'kost', specialName: 'BONE', kiaiName: 'WOOF!', finisher: 'rockyality',   // kiaiName: nápis ukazovateľa v HUD
       moveSpecial: null,                        // moves.js: bez tornáda a teleportu (uppercut, podkop, letiaci kop a kombo ostávajú ako hryzy)
       hp: 85, height: 100, speed: 1.3,          // menej života, chlpatá zásahová zóna, rýchlejší beh (speed rieši ladder.js)
       blurb: ['Zlatý retríver.', 'HAV!, KOSŤ a OLIZ:', 'súper sa musí smiať.'],
@@ -394,9 +394,9 @@
     api.rocky = { def: DEF, start: (f, mv) => { const F = api.fight; return !!F && start(f, F.fighters[1 - f.side], mv); },
                   cfg: { KIAI_CD, SPECIAL_CD, OLIZ_CD, LAUGH, SEQ_GAP, WAVE, BONE, HOP },
                   help: [   // [pohyb, klávesnica P1, klávesnica P2, ovládač PS, dotyk] — ako api.moves.help (OVLÁDANIE)
-                    ['HAV! (ROCKY)', 'R', 'I', '○', 'KIAI'],
-                    ['KOSŤ (ROCKY)', 'T', 'O', '△', '♪'],
-                    ['OLIZ (ROCKY)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'páčka dole, vpred + ÚDER'],
+                    ['WOOF! (ROCKY)', 'R', 'I', '○', 'KIAI'],
+                    ['BONE (ROCKY)', 'T', 'O', '△', '♪'],
+                    ['LICK (ROCKY)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'páčka dole, vpred + ÚDER'],
                   ] };
   },
 });

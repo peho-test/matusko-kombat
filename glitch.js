@@ -218,7 +218,7 @@
     });
 
     // ================================================================ každý snímok (hostiteľ): záznam, LAG, RESPAWN, strely, klony
-    const LAG_OK = new Set(['idle', 'walk', 'block', 'blockstun', 'hit', 'jump', 'airkick', 'punch', 'kick', 'kiai', 'special',
+    const LAG_OK = new Set(['idle', 'walk', 'block', 'blockstun', 'hit', 'jump', 'airkick', 'airpunch', 'punch', 'kick', 'kiai', 'special',
       'uppercut', 'sweep', 'punch2', 'combo3', 'deaf', 'dance', 'glitch_lag', 'glitch_clone', 'bubble', 'cup', 'pour']);
     function bodyHit(o, x, r) {            // ako lúč KIAI v game.js: pri tele a súper nie je vysoko vo výskoku (dá sa preskočiť)
       return o.vulnerable && o.state !== 'dizzy' && Math.abs(o.x - x) < 17 + r && o.y > GROUND - 45;
@@ -406,12 +406,12 @@
       return { band: fr < e.bandEnd, tear: fr < e.bandEnd && e.tear, drop: fr < e.dropEnd, seed: e.seed };
     }
     function bandShift(x0, y0, w, h, dx) {      // posun vodorovného pásu obrazovky (aj s pozadím) — klasický „glitch“
-      const T = ctx.getTransform(), sx = Math.round(x0 + T.e), sy = Math.round(y0 + T.f);
+      const T = ctx.getTransform(), k = T.a || 1, sx = Math.round(x0 * k + T.e), sy = Math.round(y0 * k + T.f);   // k = mierka plátna (RES v game.js)
       const cw = ctx.canvas.width, ch = ctx.canvas.height;
-      const ax = clamp(sx, 0, cw - 1), ay = clamp(sy, 0, ch - 1), aw = Math.min(w, cw - ax), ah = Math.min(h, ch - ay);
+      const ax = clamp(sx, 0, cw - 1), ay = clamp(sy, 0, ch - 1), aw = Math.min(Math.round(w * k), cw - ax), ah = Math.min(Math.round(h * k), ch - ay);
       if (aw <= 0 || ah <= 0) return;
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(ctx.canvas, ax, ay, aw, ah, ax + dx, ay, aw, ah);
+      ctx.drawImage(ctx.canvas, ax, ay, aw, ah, ax + Math.round(dx * k), ay, aw, ah);
       ctx.restore();
     }
     function blocks(x, y, h, n) {
@@ -600,7 +600,7 @@
       tune: { LAG_CD, LAG_T, CLONE_CD, CLONE_LIFE, RSP_T, RSP_HP },
       help: [   // [pohyb, klávesnica P1, klávesnica P2, ovládač PS, dotyk] — rovnaký formát ako api.moves.help (OVLÁDANIE, COMBOS.md)
         ['LAG (GLITCH)', 'T', 'O', '△', '♪'],
-        ['KLON (GLITCH)', 'S VPRED T', '↓ VPRED O', '↓ ▶ △', 'páčka dole, vpred + ♪'],
+        ['CLONE (GLITCH)', 'S VPRED T', '↓ VPRED O', '↓ ▶ △', 'páčka dole, vpred + ♪'],
         ['REWIND (GLITCH)', 'VZAD VZAD T', 'VZAD VZAD O', '◀ ◀ △', 'páčka vzad 2× + ♪'],
       ],
     };

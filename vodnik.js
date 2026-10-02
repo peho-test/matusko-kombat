@@ -29,7 +29,7 @@
     // ================================================================ postava
     const own = !!(FA.vodnik && FA.vodnik.anims && FA.vodnik.anims.idle);
     const DEF = {
-      p7: 'vodnik', name: 'VODNÍK', special: 'heligonka', specialName: 'BUBLINA', finisher: 'babality', moveSpecial: null,
+      p7: 'vodnik', name: 'VODNÍK', special: 'heligonka', specialName: 'BUBBLE', finisher: 'babality', moveSpecial: null,
       gi: '#2f8a3c', giDark: '#1d5a27', belt: '#d9b13a', hair: '#2b4d2a',
       blurb: ['Vodník z mlynského náhonu.', 'BUBLINA, HRNČEK S DUŠOU', 'a MLÁKA. Pri vode je doma.'],
       ladderStage: 'potok',                                   // v rebríčku najradšej doma pri vode (ladder.js)
@@ -483,9 +483,9 @@
       },
       tune: { BUB_CD, BUB_T, CUP_CD, CUP_DMG, POOL_CD, POOL_T, SLIP_DMG, BUB_DMG, HOME_DMG, HOME_CD },
       help: [   // [pohyb, klávesnica P1, klávesnica P2, ovládač PS, dotyk] — rovnaký formát ako api.moves.help (OVLÁDANIE, COMBOS.md)
-        ['BUBLINA (VODNÍK)', 'T', 'O', '△', '♪'],
-        ['HRNČEK (VODNÍK)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'páčka dole, vpred + ÚDER'],
-        ['MLÁKA (VODNÍK)', 'S S G', '↓ ↓ L', '↓ ↓ ✕', 'páčka dole 2× + KOP'],
+        ['BUBBLE (VODNÍK)', 'T', 'O', '△', '♪'],
+        ['SOUL CUP (VODNÍK)', 'S VPRED F', '↓ VPRED K', '↓ ▶ □', 'páčka dole, vpred + ÚDER'],
+        ['PUDDLE (VODNÍK)', 'S S G', '↓ ↓ L', '↓ ↓ ✕', 'páčka dole 2× + KOP'],
       ],
     };
   },

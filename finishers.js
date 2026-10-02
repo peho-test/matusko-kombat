@@ -1,8 +1,12 @@
 // MATÚŠKO KOMBAT XII — modul finishers (P2): zakončenia kombináciou vo FINISH HIM + KNIHA ZAKONČENÍ.
 // Staré jednotlačidlové spúšťanie (KIAI=rockyality, ŠPECIÁL=def.finisher, ÚDER=friendship, KOP=creeperality)
-// sa týmto modulom v game.js vypína (hooks.finisher.length > 0) — nahrádza ho tajné kombo zo zdieľanej
-// histórie vstupov (api.matchSeq). Nepoznané tlačidlo naďalej funguje ako obyčajný útok: zásah vo fáze
-// 'finish' necháva game.js (applyHitCore) spraviť pád súpera, tu sa nič extra nerobí.
+// sa týmto modulom v game.js vypína (hooks.finisher.length > 0) — nahrádza ho kombo zo zdieľanej
+// histórie vstupov (api.matchSeq).
+// P10 (FINISH HIM pre deti): útok bez komba zápas neukončí — game.js (applyHitCore) pri hooks.finisher zásah vo
+// fáze 'finish' nedokončí, tu sa porazený len zapotáca a ukáže sa SKÚS KOMBO!. Zápas skončí zakončením alebo po
+// čase (človek 10 s cez F.finishFrames, počítač 390 snímok ako doteraz). Človek vidí nápovedu kombami prepočítanú
+// na svoj smer a ovládanie; na dotyku sú zakončenia ťukacie tlačidlá, ťuk vloží do ovládača sekvenciu tlačidiel
+// komba (prejde históriou aj sieťou ako stlačenia z ovládača).
 (window.MK_MODULES = window.MK_MODULES || []).push({
   name: 'finishers',
   init(api) {
@@ -57,10 +61,22 @@
       if (F.stage && F.stage.id === 'more') list.push('moreality');
       return list;
     }
-    // zakončenie, pre ktoré chýba sprite, sa ticho nahradí pádom (rovnaký vzor ako timeout v game.js)
-    function silentFall(F, L) {
-      L.set('fall'); L.vy = -3; L.vx = 0;
-      F.phase = 'matchEnd'; F.t = -40;
+
+    // ---------------------------------------------------------------- P10: FINISH HIM pre deti — konštanty
+    const FINISH_HUMAN = 600;   // FINISH HIM pre človeka: 10 s (počítač má 390 snímok v game.js)
+    const TRY_LIFE = 75;        // ako dlho svieti SKÚS KOMBO!
+    const REEL_T = 18;          // potácanie po zásahu bez komba, potom znova omráčený
+    const BANNER_Y = 152;       // FINISH HIM! a SKÚS KOMBO! pod nápovedou (pôvodne y 120 by ju prekryl)
+    const TAP_GAP = 10;         // ťuk: snímky medzi stlačeniami komba (sieťou prídu hostiteľovi ako samostatné stlačenia)
+    const TAP_RETRY = 48;       // ťuk: keď sa zakončenie dovtedy nespustí (stratené stlačenie v sieti), sekvencia ide znova
+    const TRY_TEXTS = ['FINISH HIM!', 'SKÚS KOMBO!', 'SÚPER NEMÁ KROJ!'];
+    // SKÚS KOMBO!: baner na mieste FINISH HIM! a krátke zablikanie nápovedy (F.finishTry je v snímke stavu pre hosťa)
+    function tryAgain(F, msg = 'SKÚS KOMBO!') {
+      F.finishTry = F.t;
+      const same = F.banners.find(b => b.text === msg);
+      if (same) { same.life = same.t + TRY_LIFE; return; }       // opakovaný úder: baner len dlhšie svieti, nepreskakuje
+      F.banners = F.banners.filter(b => !TRY_TEXTS.includes(b.text));
+      api.banner(msg, TRY_LIFE, msg.length > 12 ? 20 : 24, BANNER_Y);
     }
 
     // ---------------------------------------------------------------- hooks.finisher: rozhodca komb
@@ -76,14 +92,36 @@
         recordDiscovered(kind);
         return kind;
       }
+      F.finishFrames = FINISH_HUMAN;                                       // človek (aj sieťový hosť) má 10 s
+      const fb = F.banners.find(b => b.text === 'FINISH HIM!');
+      if (fb) fb.y = BANNER_Y;
       for (const c of COMBOS) {
         if (c.arena && (!F.stage || F.stage.id !== c.arena)) continue;   // MOREALITY len v aréne 'more'
         if (!api.matchSeq(w.ctl, c.seq, MAX_GAP)) continue;
-        if (c.kind === 'folklority' && !hasKroj(L)) { silentFall(F, L); return null; }
+        if (c.kind === 'folklority' && !hasKroj(L)) { tryAgain(F, 'SÚPER NEMÁ KROJ!'); return null; }   // zápas beží ďalej
         recordDiscovered(c.kind);
+        if (L.state === 'fin_reel') { L.set('dizzy'); L.vx = 0; }         // zakončenie začína s pokojne omráčeným súperom
         return c.kind;
       }
-      return null;   // žiadne kombo → game.js necháva stlačenie prejsť ako obyčajný útok
+      const p = (w.ctl && w.ctl.pressed) || {};
+      if (p.punch || p.kick || p.kiai || p.special) tryAgain(F);           // tlačidlo bez komba: len nápoveda, nič sa nekončí
+      return null;   // útok prebehne normálne, zásah porazeného rieši afterHit nižšie (potácanie)
+    });
+
+    // ---------------------------------------------------------------- zásah bez komba: porazený sa zapotáca a ostane omráčený
+    // game.js (applyHitCore) pri zásahu vo fáze 'finish' iba odráta život, zahrá zvuk a iskry a vráti sa (hooks.finisher)
+    api.animFallback('fin_reel', 'hit');
+    api.hooks.afterHit.push((a, d, m, blocked) => {
+      const F = api.fight;
+      if (!F || F.phase !== 'finish' || d !== F.fighters[F.loser] || blocked) return;
+      d.set('fin_reel'); d.vx = a.facing * 2.4; d.vy = 0;
+      tryAgain(F);
+    });
+    api.hooks.state.push((f) => {
+      if (f.state !== 'fin_reel') return false;
+      f.vx *= 0.82;
+      if (f.t >= REEL_T) { f.set('dizzy'); f.vx = 0; }
+      return true;
     });
 
     // ---------------------------------------------------------------- hooks.cpu: počas FINISH HIM nech CPU mlčí
@@ -93,17 +131,211 @@
       return { held: {}, pressed: {} };
     });
 
-    // ---------------------------------------------------------------- HUD: tajná nápoveda namiesto starej
-    // Stará nápoveda (game.js, len keď víťaz nie je CPU) sa nedá vypnúť — táto je posadená inde na obrazovke,
-    // aby sa neprekrývali.
-    api.hooks.drawHud.push((F) => {
-      if (!F || F.phase !== 'finish') return;
+    // ---------------------------------------------------------------- P10: nápoveda kombami a ťukacie zakončenia
+    // Kreslí sa len pre človeka, ktorý vyhral NA TOMTO zariadení: offline/hostiteľ = víťaz s ovládačom ctls[i],
+    // sieťový hosť = pravý bojovník (lokálne ctls[0]). Počítač a vzdialený súper nápovedu nemajú.
+    const HINTS = BOOK_LIST.concat([{ kind: 'moreality', label: 'MOREALITY' }])
+      .map(h => ({ kind: h.kind, label: h.label, seq: COMBOS.find(c => c.kind === h.kind).seq }));
+    const TOUCH_WORD = { left: '←', right: '→', up: '↑', down: '↓', punch: 'ÚDER', kick: 'KOP', kiai: 'KIAI', special: '♪' };
+    const PAD_TXT = { left: '◀', right: '▶', up: '▲', down: '▼', punch: '□', kick: '✕', kiai: '○', special: '△' };
+    const PS_COL = { punch: '#ff8ad8', kick: '#8fb6ff', kiai: '#ff6464', special: '#4fe0b0' };
+    const absDir = (s, facing) => (s === 'F' ? (facing > 0 ? 'right' : 'left') : s === 'B' ? (facing > 0 ? 'left' : 'right') : s);
+    function localWinner(F) {
+      if (!F || F.winner < 0 || !F.fighters) return null;
+      if (isGuest()) return F.winner === 1 ? { idx: 0 } : null;
       const w = F.fighters[F.winner];
-      if (!w || w.ctl instanceof api.CPU) return;
-      if (F.t > 40 && F.t % 70 < 50) {
-        api.text('TAJNÉ KOMBO — pozri KNIHU KOMB', api.W / 2, 206, 9, 'center', '#ffe066');
+      if (!w || !w.ctl || w.ctl instanceof api.CPU || w.ctl.remote) return null;
+      const idx = api.ctls.indexOf(w.ctl);
+      return idx >= 0 ? { idx } : null;
+    }
+    function capLabel(btn, mode, idx) {
+      if (mode === 'pad') return PAD_TXT[btn];
+      if (mode === 'touch') return TOUCH_WORD[btn];
+      return api.keyHint(idx, btn).trim() || TOUCH_WORD[btn];     // P1 písmená (S, S, R), P2 šípky a K L I O
+    }
+    // model nápovedy (kreslenie, ťuk aj testy): riadky so zakončením, dostupnosťou a tlačidlami v smere víťaza
+    function hintModel(F) {
+      if (!F || F.phase !== 'finish' || F.paused) return null;
+      const me = localWinner(F); if (!me) return null;
+      const mode = api.inputKind(me.idx); if (mode === 'cpu') return null;
+      const w = F.fighters[F.winner], L = F.fighters[F.loser], avail = availableKinds(F, L);
+      const rows = HINTS.filter(h => h.kind !== 'moreality' || avail.includes('moreality')).map(h => {
+        const btns = h.seq.map(s => absDir(s, w.facing));
+        return { kind: h.kind, label: h.label, ok: avail.includes(h.kind), btns, caps: btns.map(b => capLabel(b, mode, me.idx)) };
+      });
+      return { idx: me.idx, mode, facing: w.facing, rows };
+    }
+    const tryOn = F => F.finishTry !== undefined && F.t - F.finishTry < TRY_LIFE && F.t >= F.finishTry;
+    function rrect(ctx, x, y, w, h, r) {
+      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    }
+    function timeBar(F, x, y, w) {                // zostávajúci čas FINISH HIM (tenký pásik)
+      const ctx = api.ctx, k = api.clamp(1 - F.t / (F.finishFrames || FINISH_HUMAN), 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(x, y, w, 4);
+      ctx.fillStyle = k > 0.3 ? '#ffd200' : '#ff5a3a'; ctx.fillRect(x + 1, y + 1, Math.round((w - 2) * k), 2);
+    }
+    // šípka ako tvar: písmo by ju v 7 px nakreslilo tenkú a nečitateľnú
+    const ARROW_DIR = { left: Math.PI, right: 0, up: -Math.PI / 2, down: Math.PI / 2 };
+    const ARROW_CH = { '←': 'left', '→': 'right', '↑': 'up', '↓': 'down' };
+    function drawArrow(cx, cy, dir, s, col, outline) {
+      const ctx = api.ctx;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(ARROW_DIR[dir]);
+      ctx.beginPath();
+      ctx.moveTo(s, 0); ctx.lineTo(0, -s); ctx.lineTo(0, -s * 0.38); ctx.lineTo(-s, -s * 0.38);
+      ctx.lineTo(-s, s * 0.38); ctx.lineTo(0, s * 0.38); ctx.lineTo(0, s); ctx.closePath();
+      if (outline) { ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke(); }
+      ctx.fillStyle = col; ctx.fill();
+      ctx.restore();
+    }
+    // jedna klávesa (písmeno v rámčeku) alebo tlačidlo PS ovládača (kreslená ikona, nezávisí od písma); vráti šírku
+    function capWidth(lb, mode) {
+      if (mode === 'pad' || ARROW_CH[lb]) return mode === 'pad' ? 11 : 10;
+      api.ctx.font = 'bold 7px "Trebuchet MS", Arial, sans-serif';
+      return Math.max(10, Math.ceil(api.ctx.measureText(lb).width) + 4);
+    }
+    function drawCap(x, y, btn, lb, mode, dim) {
+      const ctx = api.ctx, w = capWidth(lb, mode);
+      ctx.save();
+      if (mode !== 'pad' && ARROW_CH[lb]) {                                  // šípka na klávesnici (P2)
+        rrect(ctx, x, y, w, 10, 2); ctx.fillStyle = dim ? 'rgba(70,70,70,0.9)' : '#f4f1e6'; ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+        drawArrow(x + w / 2, y + 5, ARROW_CH[lb], 3.4, dim ? '#9a9a9a' : '#111', false);
+      } else if (mode === 'pad') {
+        const cx = x + 5.5, cy = y + 5;
+        ctx.beginPath(); ctx.arc(cx, cy, 5.3, 0, Math.PI * 2); ctx.fillStyle = dim ? 'rgba(55,55,55,0.9)' : '#16161e'; ctx.fill();
+        ctx.strokeStyle = dim ? '#555' : '#cfcfcf'; ctx.lineWidth = 1; ctx.stroke();
+        const c = dim ? '#777' : (PS_COL[btn] || '#ffffff');
+        ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 1.3;
+        const tri = a0 => { ctx.beginPath(); for (let i = 0; i < 3; i++) { const a = a0 + i * Math.PI * 2 / 3; ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * 3.2, cy + Math.sin(a) * 3.2); } ctx.closePath(); };
+        if (btn === 'left') { tri(Math.PI); ctx.fill(); } else if (btn === 'right') { tri(0); ctx.fill(); }
+        else if (btn === 'up') { tri(-Math.PI / 2); ctx.fill(); } else if (btn === 'down') { tri(Math.PI / 2); ctx.fill(); }
+        else if (btn === 'punch') ctx.strokeRect(cx - 2.4, cy - 2.4, 4.8, 4.8);
+        else if (btn === 'kick') { ctx.beginPath(); ctx.moveTo(cx - 2.5, cy - 2.5); ctx.lineTo(cx + 2.5, cy + 2.5); ctx.moveTo(cx + 2.5, cy - 2.5); ctx.lineTo(cx - 2.5, cy + 2.5); ctx.stroke(); }
+        else if (btn === 'kiai') { ctx.beginPath(); ctx.arc(cx, cy, 2.7, 0, Math.PI * 2); ctx.stroke(); }
+        else { tri(-Math.PI / 2); ctx.stroke(); }                              // special = △
+      } else {
+        rrect(ctx, x, y, w, 10, 2); ctx.fillStyle = dim ? 'rgba(70,70,70,0.9)' : '#f4f1e6'; ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.font = 'bold 7px "Trebuchet MS", Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = dim ? '#9a9a9a' : '#111'; ctx.fillText(lb, x + w / 2, y + 8);
+      }
+      ctx.restore();
+      return w;
+    }
+    // panel (klávesnica / ovládač): hore pod HUD, 3 stĺpce, menšie písmo — nad hlavami bojovníkov
+    function panelRect(n) {
+      const cols = 3, rows = Math.ceil(n / cols), colW = 112, w = cols * colW + 8, h = 12 + rows * 11 + 2;
+      return { x: Math.round((api.W - w) / 2), y: 43, w, h, cols, colW };
+    }
+    function drawPanel(F, m) {
+      const ctx = api.ctx, P = panelRect(m.rows.length), blink = tryOn(F) && Math.floor((F.t - F.finishTry) / 6) % 2 === 0;
+      ctx.save();
+      rrect(ctx, P.x, P.y, P.w, P.h, 4); ctx.fillStyle = 'rgba(8,8,22,0.6)'; ctx.fill();
+      ctx.strokeStyle = blink ? '#ffd200' : 'rgba(255,210,0,0.45)'; ctx.lineWidth = blink ? 2 : 1; ctx.stroke();
+      api.text('ZAKONČI HO! Stláčaj rýchlo po sebe:', P.x + 6, P.y + 9, 7, 'left', blink ? '#ffffff' : '#ffe8a0');
+      timeBar(F, P.x + P.w - 66, P.y + 4, 60);
+      m.rows.forEach((r, i) => {
+        const cx = P.x + 4 + (i % P.cols) * P.colW, cy = P.y + 12 + Math.floor(i / P.cols) * 11;
+        api.text(r.label, cx + 2, cy + 8, 7, 'left', r.ok ? '#ffd200' : '#6e6e6e');
+        const total = r.caps.reduce((s, lb) => s + capWidth(lb, m.mode) + 2, -2);
+        let x = cx + P.colW - 5 - total;
+        r.btns.forEach((b, j) => { x += drawCap(x, cy, b, r.caps[j], m.mode, !r.ok) + 2; });
+      });
+      ctx.restore();
+    }
+    // ťukacie tlačidlá (dotyk): mriežka 3×2 (4×2 s MOREALITY) hore pod HUD, ťuk = spustí zakončenie
+    function tapLayout(n) {
+      const cols = n > 6 ? 4 : 3, bw = cols > 3 ? 92 : 110, bh = 26, gap = 5;
+      const x0 = Math.round((api.W - (cols * bw + (cols - 1) * gap)) / 2);
+      return Array.from({ length: n }, (_, i) => ({ x: x0 + (i % cols) * (bw + gap), y: 44 + Math.floor(i / cols) * (bh + 4), w: bw, h: bh }));
+    }
+    function tapRects(F) {
+      const m = hintModel(F);
+      if (!m || m.mode !== 'touch') return [];
+      const R = tapLayout(m.rows.length);
+      return m.rows.map((r, i) => Object.assign({ kind: r.kind, ok: r.ok, btns: r.btns }, R[i]));
+    }
+    function comboLine(cx, y, btns, col) {          // „↓ ↓ KIAI“: šípky ako tvary, tlačidlá slovom ako na dotykovom ovládaní
+      const ctx = api.ctx;
+      ctx.font = 'bold 8px "Trebuchet MS", "Arial Black", Arial, sans-serif';
+      const parts = btns.map(b => (ARROW_DIR[b] !== undefined ? { b, w: 9 } : b === 'special' ? { t: '♪', w: 8, size: 12 }
+        : { t: TOUCH_WORD[b], w: ctx.measureText(TOUCH_WORD[b]).width, size: 8 }));
+      let x = cx - (parts.reduce((s, p) => s + p.w, 0) + (parts.length - 1) * 4) / 2;
+      for (const p of parts) {
+        if (p.b) drawArrow(x + p.w / 2, y - 3, p.b, 4, col, true);
+        else api.text(p.t, x, y + (p.size > 8 ? 1 : 0), p.size, 'left', col);   // ♪ väčšie, ako na dotykovom tlačidle
+        x += p.w + 4;
+      }
+    }
+    function drawTapButtons(F, m) {
+      const ctx = api.ctx, R = tapLayout(m.rows.length), blink = tryOn(F) && Math.floor((F.t - F.finishTry) / 6) % 2 === 0;
+      ctx.save();
+      m.rows.forEach((r, i) => {
+        const b = R[i], on = !!(tapQ && tapQ.kind === r.kind);
+        rrect(ctx, b.x, b.y, b.w, b.h, 6);
+        ctx.fillStyle = !r.ok ? 'rgba(35,35,35,0.55)' : on ? 'rgba(255,196,30,0.82)' : 'rgba(12,16,44,0.7)'; ctx.fill();
+        ctx.strokeStyle = !r.ok ? '#555' : blink || on ? '#ffffff' : '#ffd200'; ctx.lineWidth = blink && r.ok ? 2 : 1.5; ctx.stroke();
+        api.text(r.label, b.x + b.w / 2, b.y + 12, 9, 'center', !r.ok ? '#777' : on ? '#ffffff' : '#ffd200');
+        if (r.ok) comboLine(b.x + b.w / 2, b.y + 22, r.btns, '#cfe6ff');
+        else api.text('súper nemá kroj', b.x + b.w / 2, b.y + 22, 7, 'center', '#777');
+      });
+      timeBar(F, R[0].x, R[R.length - 1].y + R[R.length - 1].h + 3, R[R.length - 1].x + R[R.length - 1].w - R[0].x);
+      ctx.restore();
+    }
+    api.hooks.drawHud.push((F) => {
+      const m = hintModel(F);
+      if (!m) return;
+      if (m.mode === 'touch') drawTapButtons(F, m); else drawPanel(F, m);
+    });
+
+    // ---------------------------------------------------------------- ťuk → sekvencia tlačidiel komba v lokálnom ovládači
+    // Beží v hooks.frame: po pollInput (api.menu.tapPos, súradnice hry 480×270), pred updateFight a pred NET.onGuestFrame.
+    // Každé tlačidlo komba sa „stlačí“ na jeden snímok (held + pressed) s odstupom TAP_GAP. Offline/hostiteľ ho zapíše do
+    // history cez Ctl.record() (relatívne F/B podľa pohľadu, ako skutočné stlačenie) → api.matchSeq → hooks.finisher.
+    // Sieťový hosť ho len pošle v NET.onGuestFrame (held/pressed z ctls[0]); históriu zapíše hostiteľ vo vzdialenom Ctl.
+    let tapQ = null, guestBookKey = '';
+    function inject(ctl, btn) {
+      ctl.held[btn] = true; ctl.pressed[btn] = true;
+      if (isGuest() || typeof ctl.record !== 'function') return;
+      const real = ctl.pressed;
+      ctl.pressed = { [btn]: true };                                     // record() zapíše len toto jedno stlačenie
+      try { ctl.record(); } finally { ctl.pressed = real; }
+    }
+    api.hooks.frame.push(() => {
+      const F = api.fight;
+      if (api.scene !== 'fight' || !F || F.phase !== 'finish' || F.paused) {
+        tapQ = null;
+        // sieťový hosť: zakončenie, ktoré spustil (klávesnicou aj ťukom), si zapíše aj do svojej KNIHY KOMB
+        if (F && isGuest() && F.phase === 'finisher' && F.winner === 1 && F.finisher) {
+          const key = (F.statId || '') + ':' + F.finisher;
+          if (key !== guestBookKey) { guestBookKey = key; recordDiscovered(F.finisher); }
+        }
+        return;
+      }
+      const m = hintModel(F);
+      if (!m) { tapQ = null; return; }
+      const tp = api.menu.tapPos;
+      if (tp && m.mode === 'touch') {
+        const r = tapRects(F).find(q => tp.x >= q.x && tp.x <= q.x + q.w && tp.y >= q.y && tp.y <= q.y + q.h);
+        if (r && r.ok) { tapQ = { kind: r.kind, btns: r.btns.slice(), i: 0, next: api.frame, done: -1, tries: 0 }; api.sfx('select', 0.5); }
+      }
+      if (!tapQ) return;
+      if (tapQ.i < tapQ.btns.length) {
+        if (api.frame < tapQ.next) return;
+        inject(api.ctls[m.idx], tapQ.btns[tapQ.i++]);
+        tapQ.next = api.frame + TAP_GAP;
+        if (tapQ.i >= tapQ.btns.length) tapQ.done = api.frame;
+      } else if (api.frame - tapQ.done > TAP_RETRY) {                    // zakončenie sa nespustilo (napr. stratené v sieti)
+        if (tapQ.tries < 2) { tapQ.tries++; tapQ.i = 0; tapQ.next = api.frame; } else tapQ = null;
       }
     });
+
+    // pre testy a ostatné moduly
+    api.finishers = {
+      FINISH_HUMAN, TAP_GAP, hintModel, tapRects,
+      get tapQueue() { return tapQ; },
+    };
 
     // ---------------------------------------------------------------- MOREALITY (B): kreslené chápadlo z mora
     function drawTentacle(F) {

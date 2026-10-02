@@ -21,10 +21,17 @@
       restoreOrder();
     }
     function fail(msg) { cleanup(); L.mode = 'error'; L.msg = msg; }
-    function lost() {
+    function lost(msg = 'SÚPER SA ODPOJIL') {
       const was = NET.role;
       NET.role = null; NET.events.length = 0; api.ctls[1].remote = null; cleanup();
-      if (was) { api.setScene('title'); api.showToast('SÚPER SA ODPOJIL'); }
+      if (was) { api.setScene('title'); api.showToast(msg); }
+    }
+    function leave() {                         // hráč sám odchádza do menu: povie to súperovi a ukončí spojenie
+      try { if (L.conn && L.conn.open) L.conn.send({ t: 'bye' }); } catch (e) { /* už zavreté */ }
+      const was = NET.role;
+      NET.role = null; NET.events.length = 0; api.ctls[1].remote = null;
+      setTimeout(cleanup, 300);                // nech „bye“ stihne odísť
+      if (was) { api.setScene('title'); api.music('title'); }
     }
     function errText(e) {
       const t = (e && e.type) || '';
@@ -79,6 +86,7 @@
     // ---------------------------------------------------------------- hostiteľ: vstup hosťa + odosielanie stavu
     function onHostData(d) {
       L.lastRx = api.frame;
+      if (d && d.t === 'bye') return lost('SÚPER ODIŠIEL DO MENU');
       if (!d || d.t !== 'i') return;
       const r = api.ctls[1].remote; if (!r) return;
       r.held = d.h || {};
@@ -106,6 +114,12 @@
     }
     api.hooks.frame.push(() => {
       if (NET.role && api.frame - L.lastRx > TIMEOUT) return lost();
+      if (NET.role && L.conn && api.scene === 'title') return leave();        // hostiteľ sa vrátil do menu (pauza, výsledky, Esc)
+      if (NET.role === 'guest' && L.conn && api.menu.tapPos) {                           // hosť nemá vlastnú logiku scén: tlačidlá MENU rieši tu
+        const tp = api.menu.tapPos, F = api.fight;
+        if ((api.scene === 'result' && api.inBtn(tp, api.RESULT_BTNS.menu)) || (api.scene === 'select' && api.inBtn(tp, api.SELECT_BACK))
+            || (api.scene === 'fight' && F && F.paused)) return leave();
+      }
       if (NET.role !== 'host' || !L.conn || !L.conn.open) return;
       L.t++;
       const ev = NET.events.splice(0);
@@ -143,6 +157,7 @@
     function onGuestData(d) {
       L.lastRx = api.frame;
       if (!d) return;
+      if (d.t === 'bye') return lost('SÚPER ODIŠIEL DO MENU');
       if (d.t === 'e') return playEvents(d.e);
       if (d.t !== 's') return;
       const s = d.s;
