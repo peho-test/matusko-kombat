@@ -1682,9 +1682,11 @@ function drawSelect() {
     if (game.cursor[0] === i) text(game.locked[0] ? '1P ✔' : '1P', x + 12, y + 14, 10, 'center', '#3fa9ff');
     if (game.mode === 2 && game.cursor[1] === i) text(game.locked[1] ? '2P ✔' : '2P', x + pw - 12, y + 14, 10, 'center', '#ff4040');
   });
-  const { x, y } = selPos(ORDER.length);
-  ctx.fillStyle = '#16121f'; ctx.fillRect(x, y, pw, ph); text('?', x + pw / 2, y + ph * 0.6, Math.round(pw * 0.42), 'center', '#3a3350');
-  text('???', x + pw / 2, y + ph + (grid ? 11 : 16), grid ? 7 : pw < 80 ? 9 : 12, 'center', '#555');
+  if (game.mode !== 2) {                              // ??? = ešte neodomknuté; v MULTIPLAYERI sú na výbere všetky (ladder.js), tak nič
+    const { x, y } = selPos(ORDER.length);
+    ctx.fillStyle = '#16121f'; ctx.fillRect(x, y, pw, ph); text('?', x + pw / 2, y + ph * 0.6, Math.round(pw * 0.42), 'center', '#3a3350');
+    text('???', x + pw / 2, y + ph + (grid ? 11 : 16), grid ? 7 : pw < 80 ? 9 : 12, 'center', '#555');
+  }
   if (grid) {                                          // pri dvoch riadkoch: popis postavy pod kurzorom hráča 1 dole v strede
     const cur = ROSTER[ORDER[game.cursor[0]]];
     if (cur) (cur.blurb || []).forEach((l, k) => text(l, W / 2, SEL.y + 2 * SEL.rowH + 4 + k * 9, 7, 'center', '#ccc'));

@@ -222,6 +222,23 @@
       if (!(api.NET && api.NET.role === 'guest'))           // poistka: vyradené postavy nikdy na výbere (hosťovi poradie posiela hostiteľ)
         for (const id of RETIRED_IDS) { const i = ORDER.indexOf(id); if (i >= 0) ORDER.splice(i, 1); }
     }
+    // MULTIPLAYER (na jednom počítači aj cez sieť): na výbere všetky postavy, aj neodomknuté (Peťo 2. 10.).
+    // Pridajú sa len dočasne pri vstupe na výber v režime 2 hráčov; po návrate do menu sa uberú tie, ktoré naozaj nie sú odomknuté.
+    let mpExtra = null;
+    function unlockableIds() {
+      return Object.values(UNLOCKS).map(u => u.id()).filter(id => id && ROSTER[id] && !RETIRED_IDS.includes(id));
+    }
+    api.hooks.frame.push(() => {
+      if (api.NET && api.NET.role === 'guest') return;              // hosťovi poradie posiela hostiteľ
+      if (api.scene === 'select' && api.game.mode === 2 && !mpExtra) {
+        mpExtra = unlockableIds().filter(id => !ORDER.includes(id));
+        for (const id of mpExtra) ORDER.push(id);
+      } else if (mpExtra && (api.scene === 'title' || api.game.mode !== 2)) {
+        const real = new Set([...unlocked].map(k => UNLOCKS[k] && UNLOCKS[k].id()).filter(Boolean));
+        for (const id of mpExtra) { const i = ORDER.indexOf(id); if (i >= 0 && !real.has(id)) ORDER.splice(i, 1); }
+        mpExtra = null;
+      }
+    });
     function unlock(k, quiet) {
       if (!UNLOCKS[k] || unlocked.has(k)) return false;
       unlocked.add(k); saveUnlocks(); applyUnlocks();

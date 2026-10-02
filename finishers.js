@@ -7,12 +7,16 @@
 // čase (človek 10 s cez F.finishFrames, počítač 390 snímok ako doteraz). Človek vidí nápovedu kombami prepočítanú
 // na svoj smer a ovládanie; na dotyku sú zakončenia ťukacie tlačidlá, ťuk vloží do ovládača sekvenciu tlačidiel
 // komba (prejde históriou aj sieťou ako stlačenia z ovládača).
+// P18: TORTALITY, SELFIEALITY a MUSICALITY majú priebeh a kreslenie vo finishers2.js; tu sú ich kombá, nápoveda, ťukacie
+// tlačidlá (mriežka 5×2) a riadky KNIHY KOMB (dva stĺpce).
 (window.MK_MODULES = window.MK_MODULES || []).push({
   name: 'finishers',
   init(api) {
     const MAX_GAP = 36;   // 0,6 s pri 60 fps — medzera medzi stlačeniami v kombe
     // zhoda konca histórie (api.matchSeq); kombá sa líšia poradím smerov a tlačidla. Dlhšie kombo sa skúša
     // skôr, takže pri prípadnom prekryve vyhrá najdlhšia zhoda (VZAD×3 KOP = FRIENDSHIP, nikdy FUTBALITY).
+    // P18: mod = zakončenie z modulu finishers2.js (TORTALITY, SELFIEALITY, MUSICALITY) — platí, len keď je zaregistrované.
+    // Žiadne kombo nie je koncom iného (test_finishers2.js); pohyby postáv so sekvenciami bežia len vo fáze 'fight'.
     const COMBOS = [
       { kind: 'rockyality',   seq: ['down', 'down', 'kiai'] },
       { kind: 'creeperality', seq: ['down', 'up', 'kick'] },
@@ -21,9 +25,13 @@
       { kind: 'folklority',   seq: ['F', 'B', 'special'] },
       { kind: 'moreality',    seq: ['F', 'F', 'kiai'], arena: 'more' },
       { kind: 'futbality',    seq: ['B', 'F', 'kick'] },
+      { kind: 'tortality',    seq: ['B', 'down', 'F', 'punch'], mod: true },
+      { kind: 'selfieality',  seq: ['up', 'down', 'up', 'punch'], mod: true },
+      { kind: 'musicality',   seq: ['down', 'B', 'special'], mod: true },
     ].sort((a, b) => b.seq.length - a.seq.length);
+    const ready = kind => { const c = COMBOS.find(q => q.kind === kind); return !c || !c.mod || !!api.FINISHERS[kind]; };
     const BOOK_KEY = 'mk12_finishers';
-    // zoznam pre KNIHU KOMB (MOREALITY je skryté tajomstvo len pre more oblúd, nepočíta sa do X/6)
+    // zoznam pre KNIHU KOMB (MOREALITY je skryté tajomstvo len pre more oblúd, nepočíta sa do X/9)
     const BOOK_LIST = [
       { kind: 'rockyality',   label: 'ROCKYALITY',   combo: '↓ ↓ KIAI' },
       { kind: 'creeperality', label: 'CREEPERALITY', combo: '↓ ↑ KOP' },
@@ -31,7 +39,11 @@
       { kind: 'friendship',   label: 'FRIENDSHIP',   combo: 'VZAD VZAD VZAD KOP' },
       { kind: 'folklority',   label: 'FOLKLORITY',   combo: 'VPRED VZAD ŠPECIÁL' },
       { kind: 'futbality',    label: 'FUTBALITY',    combo: 'VZAD VPRED KOP' },
+      { kind: 'tortality',    label: 'TORTALITY',    combo: 'VZAD ↓ VPRED ÚDER' },
+      { kind: 'selfieality',  label: 'SELFIEALITY',  combo: '↑ ↓ ↑ ÚDER' },
+      { kind: 'musicality',   label: 'MUSICALITY',   combo: '↓ VZAD ŠPECIÁL' },
     ];
+    const bookList = () => BOOK_LIST.filter(it => ready(it.kind));
 
     // ---------------------------------------------------------------- kniha zakončení (localStorage, try/catch)
     function loadBook() {
@@ -59,6 +71,7 @@
       const list = ['rockyality', 'creeperality', 'babality', 'friendship', 'futbality'];
       if (hasKroj(L)) list.push('folklority');
       if (F.stage && F.stage.id === 'more') list.push('moreality');
+      for (const c of COMBOS) if (c.mod && ready(c.kind)) list.push(c.kind);   // P18 (finishers2.js), náhrady kreslenia majú pre každého
       return list;
     }
 
@@ -97,6 +110,7 @@
       if (fb) fb.y = BANNER_Y;
       for (const c of COMBOS) {
         if (c.arena && (!F.stage || F.stage.id !== c.arena)) continue;   // MOREALITY len v aréne 'more'
+        if (!ready(c.kind)) continue;                                      // modul so zakončením nie je načítaný
         if (!api.matchSeq(w.ctl, c.seq, MAX_GAP)) continue;
         if (c.kind === 'folklority' && !hasKroj(L)) { tryAgain(F, 'SÚPER NEMÁ KROJ!'); return null; }   // zápas beží ďalej
         recordDiscovered(c.kind);
@@ -159,7 +173,7 @@
       const me = localWinner(F); if (!me) return null;
       const mode = api.inputKind(me.idx); if (mode === 'cpu') return null;
       const w = F.fighters[F.winner], L = F.fighters[F.loser], avail = availableKinds(F, L);
-      const rows = HINTS.filter(h => h.kind !== 'moreality' || avail.includes('moreality')).map(h => {
+      const rows = HINTS.filter(h => (h.kind !== 'moreality' || avail.includes('moreality')) && ready(h.kind)).map(h => {
         const btns = h.seq.map(s => absDir(s, w.facing));
         return { kind: h.kind, label: h.label, ok: avail.includes(h.kind), btns, caps: btns.map(b => capLabel(b, mode, me.idx)) };
       });
@@ -244,9 +258,10 @@
       });
       ctx.restore();
     }
-    // ťukacie tlačidlá (dotyk): mriežka 3×2 (4×2 s MOREALITY) hore pod HUD, ťuk = spustí zakončenie
+    // ťukacie tlačidlá (dotyk): mriežka 5×2 (9 zakončení, s MOREALITY 10) hore pod HUD, ťuk = spustí zakončenie;
+    // dva riadky ostanú nad hlavami bojovníkov a nad nápisom FINISH HIM! (y 152)
     function tapLayout(n) {
-      const cols = n > 6 ? 4 : 3, bw = cols > 3 ? 92 : 110, bh = 26, gap = 5;
+      const cols = n > 8 ? 5 : n > 6 ? 4 : 3, bw = cols > 4 ? 88 : cols > 3 ? 92 : 110, bh = 26, gap = cols > 4 ? 4 : 5;
       const x0 = Math.round((api.W - (cols * bw + (cols - 1) * gap)) / 2);
       return Array.from({ length: n }, (_, i) => ({ x: x0 + (i % cols) * (bw + gap), y: 44 + Math.floor(i / cols) * (bh + 4), w: bw, h: bh }));
     }
@@ -280,7 +295,8 @@
         if (r.ok) comboLine(b.x + b.w / 2, b.y + 22, r.btns, '#cfe6ff');
         else api.text('súper nemá kroj', b.x + b.w / 2, b.y + 22, 7, 'center', '#777');
       });
-      timeBar(F, R[0].x, R[R.length - 1].y + R[R.length - 1].h + 3, R[R.length - 1].x + R[R.length - 1].w - R[0].x);
+      const right = Math.max(...R.map(b => b.x + b.w));                    // neúplný posledný riadok (9 v mriežke 5×2): pásik cez celú šírku
+      timeBar(F, R[0].x, R[R.length - 1].y + R[R.length - 1].h + 3, right - R[0].x);
       ctx.restore();
     }
     api.hooks.drawHud.push((F) => {
@@ -333,7 +349,8 @@
 
     // pre testy a ostatné moduly
     api.finishers = {
-      FINISH_HUMAN, TAP_GAP, hintModel, tapRects,
+      FINISH_HUMAN, TAP_GAP, hintModel, tapRects, bookList,
+      combos: () => COMBOS.filter(c => ready(c.kind)).map(c => ({ kind: c.kind, seq: c.seq.slice(), arena: c.arena || null })),
       get tapQueue() { return tapQ; },
     };
 
@@ -661,15 +678,17 @@
       const ctx = api.ctx, W = api.W;
       ctx.fillStyle = '#0b0b14'; ctx.fillRect(0, 0, W, api.H);
       api.bigText('KNIHA KOMB', W / 2, 30, 24);
-      const found = loadBook();
+      const found = loadBook(), list = bookList(), two = list.length > 6;   // viac ako 6 zakončení: dva stĺpce (inak by pretiekli dole)
+      const rows = two ? Math.ceil(list.length / 2) : list.length, step = two ? 30 : 28;
       let n = 0;
-      BOOK_LIST.forEach((it, i) => {
-        const y = 58 + i * 28, ok = found.has(it.kind);
+      list.forEach((it, i) => {
+        const col = two ? Math.floor(i / rows) : 0, x = two ? (col ? W / 2 + 14 : W / 2 - 196) : W / 2 - 140;
+        const y = 58 + (two ? i % rows : i) * step, ok = found.has(it.kind);
         if (ok) n++;
-        api.text(ok ? it.label : '???', W / 2 - 140, y, 13, 'left', ok ? '#ffd200' : '#555');
-        if (ok) api.text(it.combo, W / 2 - 140, y + 13, 9, 'left', '#9fd8ff');
+        api.text(ok ? it.label : '???', x, y, 13, 'left', ok ? '#ffd200' : '#555');
+        if (ok) api.text(it.combo, x, y + 13, 9, 'left', '#9fd8ff');
       });
-      api.text(`${n}/${BOOK_LIST.length} OBJAVENÝCH`, W / 2, 58 + BOOK_LIST.length * 28 + 14, 12, 'center', '#ffe066');
+      api.text(`${n}/${list.length} OBJAVENÝCH`, W / 2, 58 + rows * step + 14, 12, 'center', '#ffe066');
       api.text('ÚDER / ENTER / Esc / ťuk = späť', W / 2, api.H - 12, 9, 'center', '#aaa');
     }
     api.registerScene('combobook', { update: updateBook, draw: drawBook });

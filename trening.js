@@ -80,6 +80,8 @@
         const sp = api.moves.specialOf ? api.moves.specialOf(f) : null, h = sp && MOVE_SPECIAL[sp] && fromHelp(mh, MOVE_SPECIAL[sp]);
         if (h) rows.push(helpRow('m_' + sp, h, isState(sp)));
       }
+      const c2 = api.combos2 && api.combos2.rows ? api.combos2.rows(f) : [];   // nové kombá (combos2.js): FLIP KICK, ROCKY HELP, WAVE / SOLO
+      for (const r of c2) rows.push(helpRow(r.id, r.help, r.test));
       rows.push(row('finish', 'FINISH HIM', ['ENTER', 'ENTER', 'START', 'tlačidlo hore'], null));
       return rows;
     }

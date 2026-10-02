@@ -159,12 +159,16 @@ window.MK_ASSETS = {
     },
     "uppercut": {
      "src": "assets/matusko/uppercut.png",
-     "frames": 14,
-     "w": 103,
-     "h": 196,
+     "frames": 10,
+     "w": 97,
+     "h": 156,
      "ax": 52,
-     "ay": 196,
+     "ay": 156,
      "fps": 15.0,
+     "peak": [
+      4,
+      6
+     ],
      "hi": 2,
      "src2": "assets/matusko/uppercut@2.png"
     },
@@ -204,6 +208,17 @@ window.MK_ASSETS = {
      "fps": 8.0,
      "hi": 2,
      "src2": "assets/matusko/dance@2.png"
+    },
+    "selfie": {
+     "src": "assets/matusko/selfie.png",
+     "frames": 14,
+     "w": 93,
+     "h": 158,
+     "ax": 44,
+     "ay": 158,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/matusko/selfie@2.png"
     }
    }
   },
@@ -387,12 +402,16 @@ window.MK_ASSETS = {
     },
     "uppercut": {
      "src": "assets/simon/uppercut.png",
-     "frames": 14,
-     "w": 123,
-     "h": 178,
-     "ax": 54,
-     "ay": 178,
+     "frames": 12,
+     "w": 117,
+     "h": 216,
+     "ax": 60,
+     "ay": 215,
      "fps": 15.0,
+     "peak": [
+      4,
+      6
+     ],
      "hi": 2,
      "src2": "assets/simon/uppercut@2.png"
     },
@@ -410,6 +429,17 @@ window.MK_ASSETS = {
      ],
      "hi": 2,
      "src2": "assets/simon/sweep@2.png"
+    },
+    "selfie": {
+     "src": "assets/simon/selfie.png",
+     "frames": 14,
+     "w": 111,
+     "h": 160,
+     "ax": 56,
+     "ay": 159,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/simon/selfie@2.png"
     }
    }
   },
@@ -513,12 +543,16 @@ window.MK_ASSETS = {
     },
     "uppercut": {
      "src": "assets/boss/uppercut.png",
-     "frames": 14,
-     "w": 102,
-     "h": 191,
-     "ax": 46,
-     "ay": 189,
+     "frames": 12,
+     "w": 106,
+     "h": 181,
+     "ax": 53,
+     "ay": 180,
      "fps": 15.0,
+     "peak": [
+      6,
+      8
+     ],
      "hi": 2,
      "src2": "assets/boss/uppercut@2.png"
     },
@@ -576,6 +610,28 @@ window.MK_ASSETS = {
      "fps": 8.0,
      "hi": 2,
      "src2": "assets/boss/dance@2.png"
+    },
+    "selfie": {
+     "src": "assets/boss/selfie.png",
+     "frames": 14,
+     "w": 89,
+     "h": 156,
+     "ax": 41,
+     "ay": 156,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/boss/selfie@2.png"
+    },
+    "music": {
+     "src": "assets/boss/music.png",
+     "frames": 10,
+     "w": 83,
+     "h": 166,
+     "ax": 41,
+     "ay": 165,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/boss/music@2.png"
     }
    }
   },
@@ -636,11 +692,15 @@ window.MK_ASSETS = {
     "uppercut": {
      "src": "assets/ninja/uppercut.png",
      "frames": 14,
-     "w": 134,
-     "h": 194,
-     "ax": 62,
-     "ay": 194,
+     "w": 117,
+     "h": 195,
+     "ax": 58,
+     "ay": 195,
      "fps": 15.0,
+     "peak": [
+      6,
+      8
+     ],
      "hi": 2,
      "src2": "assets/ninja/uppercut@2.png"
     },
@@ -761,6 +821,28 @@ window.MK_ASSETS = {
      "fps": 8.0,
      "hi": 2,
      "src2": "assets/ninja/dance@2.png"
+    },
+    "selfie": {
+     "src": "assets/ninja/selfie.png",
+     "frames": 14,
+     "w": 113,
+     "h": 158,
+     "ax": 55,
+     "ay": 158,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/ninja/selfie@2.png"
+    },
+    "music": {
+     "src": "assets/ninja/music.png",
+     "frames": 13,
+     "w": 98,
+     "h": 163,
+     "ax": 54,
+     "ay": 162,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/ninja/music@2.png"
     }
    }
   },
@@ -805,12 +887,16 @@ window.MK_ASSETS = {
     },
     "uppercut": {
      "src": "assets/vodnik/uppercut.png",
-     "frames": 14,
-     "w": 114,
-     "h": 186,
-     "ax": 55,
-     "ay": 184,
+     "frames": 12,
+     "w": 95,
+     "h": 177,
+     "ax": 60,
+     "ay": 174,
      "fps": 15.0,
+     "peak": [
+      5,
+      7
+     ],
      "hi": 2,
      "src2": "assets/vodnik/uppercut@2.png"
     },
@@ -957,6 +1043,28 @@ window.MK_ASSETS = {
      "fps": 8.0,
      "hi": 2,
      "src2": "assets/vodnik/dance@2.png"
+    },
+    "selfie": {
+     "src": "assets/vodnik/selfie.png",
+     "frames": 14,
+     "w": 90,
+     "h": 164,
+     "ax": 46,
+     "ay": 164,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/vodnik/selfie@2.png"
+    },
+    "music": {
+     "src": "assets/vodnik/music.png",
+     "frames": 13,
+     "w": 105,
+     "h": 167,
+     "ax": 47,
+     "ay": 166,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/vodnik/music@2.png"
     }
    }
   },
@@ -1016,12 +1124,16 @@ window.MK_ASSETS = {
     },
     "uppercut": {
      "src": "assets/bananac/uppercut.png",
-     "frames": 14,
-     "w": 91,
-     "h": 176,
-     "ax": 47,
-     "ay": 175,
+     "frames": 10,
+     "w": 105,
+     "h": 212,
+     "ax": 56,
+     "ay": 210,
      "fps": 15.0,
+     "peak": [
+      5,
+      7
+     ],
      "hi": 2,
      "src2": "assets/bananac/uppercut@2.png"
     },
@@ -1138,6 +1250,28 @@ window.MK_ASSETS = {
      "fps": 12.0,
      "hi": 2,
      "src2": "assets/bananac/throw@2.png"
+    },
+    "selfie": {
+     "src": "assets/bananac/selfie.png",
+     "frames": 14,
+     "w": 93,
+     "h": 154,
+     "ax": 48,
+     "ay": 154,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/bananac/selfie@2.png"
+    },
+    "music": {
+     "src": "assets/bananac/music.png",
+     "frames": 14,
+     "w": 80,
+     "h": 154,
+     "ax": 46,
+     "ay": 154,
+     "fps": 10.0,
+     "hi": 2,
+     "src2": "assets/bananac/music@2.png"
     }
    }
   }
@@ -1371,6 +1505,17 @@ window.MK_ASSETS = {
     "fps": 9.0,
     "hi": 2,
     "src2": "assets/rocky/dance@2.png"
+   },
+   "music": {
+    "src": "assets/rocky/music.png",
+    "frames": 9,
+    "w": 81,
+    "h": 78,
+    "ax": 68,
+    "ay": 77,
+    "fps": 10.0,
+    "hi": 2,
+    "src2": "assets/rocky/music@2.png"
    }
   }
  },
@@ -1422,6 +1567,10 @@ window.MK_ASSETS = {
   "cake_simon": "assets/ui/cake_simon.png",
   "dragon": "assets/ui/dragon.png",
   "emblem": "assets/ui/emblem.png",
+  "fin_cake": "assets/ui/fin_cake.png",
+  "fin_chair": "assets/ui/fin_chair.png",
+  "fin_splat": "assets/ui/fin_splat.png",
+  "fin_stage": "assets/ui/fin_stage.png",
   "portrait_boss": "assets/ui/portrait_boss.png",
   "portrait_glitch": "assets/ui/portrait_glitch.png",
   "portrait_matusko": "assets/ui/portrait_matusko.png",
@@ -1440,6 +1589,15 @@ window.MK_ASSETS = {
   "crack": "assets/sfx/crack.mp3",
   "crowd": "assets/sfx/crowd.mp3",
   "fall": "assets/sfx/fall.mp3",
+  "fin_bad_generic": "assets/sfx/fin_bad_generic.mp3",
+  "fin_bad_heligonka": "assets/sfx/fin_bad_heligonka.mp3",
+  "fin_bad_husle": "assets/sfx/fin_bad_husle.mp3",
+  "fin_beep": "assets/sfx/fin_beep.mp3",
+  "fin_crowd": "assets/sfx/fin_crowd.mp3",
+  "fin_groan": "assets/sfx/fin_groan.mp3",
+  "fin_shutter": "assets/sfx/fin_shutter.mp3",
+  "fin_splat": "assets/sfx/fin_splat.mp3",
+  "fin_whistle": "assets/sfx/fin_whistle.mp3",
   "fire": "assets/sfx/fire.mp3",
   "fireball": "assets/sfx/fireball.mp3",
   "folklority": "assets/sfx/folklority.mp3",
@@ -1497,6 +1655,7 @@ window.MK_ASSETS = {
   "say_kai_wins": "assets/voice/kai_wins.mp3",
   "say_matusko_wins": "assets/voice/matusko_wins.mp3",
   "say_moreality": "assets/voice/moreality.mp3",
+  "say_musicality": "assets/voice/musicality.mp3",
   "say_ninja_fire_wins": "assets/voice/ninja_fire_wins.mp3",
   "say_ninja_ice_wins": "assets/voice/ninja_ice_wins.mp3",
   "say_ninja_shadow_wins": "assets/voice/ninja_shadow_wins.mp3",
@@ -1508,6 +1667,7 @@ window.MK_ASSETS = {
   "say_round1": "assets/voice/round1.mp3",
   "say_round2": "assets/voice/round2.mp3",
   "say_round3": "assets/voice/round3.mp3",
+  "say_selfieality": "assets/voice/selfieality.mp3",
   "say_simon_wins": "assets/voice/simon_wins.mp3",
   "say_ssj_bananac": "assets/voice/ssj_bananac.mp3",
   "say_ssj_blocky": "assets/voice/ssj_blocky.mp3",
@@ -1531,6 +1691,7 @@ window.MK_ASSETS = {
   "say_tien_xxl_wins": "assets/voice/tien_xxl_wins.mp3",
   "say_title": "assets/voice/title.mp3",
   "say_toasty": "assets/voice/toasty.mp3",
+  "say_tortality": "assets/voice/tortality.mp3",
   "say_vodnik_wins": "assets/voice/vodnik_wins.mp3",
   "say_zlaty_wins": "assets/voice/zlaty_wins.mp3",
   "music_fight": "assets/music/fight.mp3",
