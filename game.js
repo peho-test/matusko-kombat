@@ -421,7 +421,7 @@ const NO_INPUT = { held: {}, pressed: {} };
 // spoločný vstup pre menu (ktorýkoľvek hráč)
 const menu = { up: false, down: false, left: false, right: false, ok: false, back: false };
 let padMusicPrev = false, padUsed = false, padUnlockTried = false, padBackPrev = false;
-const PAD_BACK_SCENES = new Set(['select', 'hora_veza', 'controls', 'combobook', 'slava', 'net', 'credits']);   // ○ = späť (Codex r6); nie v boji, BATTLE PLAN, CONTINUE ani na výsledku
+const PAD_BACK_SCENES = new Set(['select', 'hora_veza', 'controls', 'navod', 'combobook', 'slava', 'net', 'credits']);   // ○ = späť (Codex r6); nie v boji, BATTLE PLAN, CONTINUE ani na výsledku
 const padActive = [false, false];
 function pollInput() {
   const ps = pads();
@@ -1628,6 +1628,7 @@ function groupMenu() {                    // po načítaní modulov: položky hi
     net && { label: 'CEZ SIEŤ', act: net.act, hint: 'Každý na svojom mobile alebo počítači (treba internet)' }, ...group('multi'), { label: '◀ SPÄŤ', back: true, hint: '' }].filter(Boolean);
   MENU.unshift({ label: 'MULTIPLAYER', sub: 'multi', act() { openSubmenu('multi'); } });
   MENU.unshift({ label: 'SINGLE PLAYER', sub: 'single', act() { openSubmenu('single'); } });
+  MENU.splice(2, 0, { label: 'AKO HRAŤ', hint: 'Návod: jeden hráč, dvaja hráči, hra cez sieť, mobil', act() { setScene('navod'); } });   // Peťo 3. 10.: návod priamo v hre
   const ov = MENU.find(it => it.label === 'OVLÁDANIE');
   if (ov) { ov.label = 'OVLÁDANIE A ÚDERY'; ov.hint = 'Klávesy, ovládač, mobil, špeciálne údery a schopnosti postáv'; }   // Peťo: špeciálne údery hneď nenašiel
   if (INSTALLED_TOUCH) MENU.push({ label: 'AKO ODÍSŤ', hint: 'Ako zavrieť hru v telefóne', act() { game.exitHelp = frameNo; } });
@@ -1733,6 +1734,76 @@ function drawControls() {
   }
   if (n > 1) text(`◀ ▶  strana ${page + 1}/${n}`, W / 2, 234, 9, 'center', '#ffd200');
   text('ESC = pauza    M = zvuk    Enter = späť', W / 2, 252, 9, 'center', '#aaa');
+}
+// AKO HRAŤ (Peťo 3. 10.: „aby vedel bezo mňa, ako funguje multiplayer, single player, ako si nainštalovať aplikáciu na mobil“)
+// 'h' = nadpis, 't' = riadok; údery a kombá sú v OVLÁDANIE A ÚDERY, tu len cesta k nim
+const NAVOD = [
+  { title: 'JEDEN HRÁČ: SINGLE PLAYER', rows: [
+    ['h', 'HORA — výstup na vrchol'], ['t', 'Vyber si vežu a poraz súperov jedného po druhom až po bossa MASTER STORM.'],
+    ['h', 'JEDEN ZÁPAS'], ['t', 'Jeden zápas proti počítaču.'],
+    ['h', 'TRÉNING'], ['t', 'Skúšaj údery, kombá a zakončenia FINISH HIM. Nikto neprehrá.'],
+    ['h', 'VÝBER BOJOVNÍKA'], ['t', 'Mobil: prvý ťuk postavu označí, druhý ťuk na tú istú ju potvrdí.'],
+    ['t', 'Klávesnica: šípky a potom F alebo ENTER.'] ] },
+  { title: 'DVAJA NA JEDNOM POČÍTAČI', rows: [
+    ['h', 'MULTIPLAYER → NA JEDNOM POČÍTAČI'],
+    ['t', 'Hráč 1: A D pohyb, W skok, S blok, F úder, G kop, R KIAI, T špeciál'],
+    ['t', 'Hráč 2: šípky, K úder, L kop, I KIAI, O špeciál'],
+    ['t', 'Alebo dva ovládače PlayStation (USB alebo Bluetooth).'],
+    ['t', 'Každý si vyberie bojovníka a zápas začne.'] ] },
+  { title: 'HRA CEZ SIEŤ: DVA MOBILY', rows: [
+    ['t', 'Obaja potrebujú internet (Wi-Fi alebo mobilné dáta).'],
+    ['h', '1. Prvý hráč'], ['t', 'MULTIPLAYER → CEZ SIEŤ → VYTVORIŤ ZÁPAS. Ukáže sa 4-miestny kód.'],
+    ['h', '2. Druhý hráč'], ['t', 'MULTIPLAYER → CEZ SIEŤ → PRIPOJIŤ SA KÓDOM, zadá kód a OK.'],
+    ['h', '3. Bojovníci'], ['t', 'Každý si na svojom mobile vyberie bojovníka (dva ťuky).'],
+    ['t', 'Funguje aj s počítačom: každý hrá na svojom zariadení.'] ] },
+  { title: 'OVLÁDANIE NA MOBILE', rows: [
+    ['t', 'Telefón drž na šírku.'],
+    ['h', 'Páčka vľavo'], ['t', '◀ ▶ pohyb, ▲ skok, dole BLOK'],
+    ['h', 'Tlačidlá vpravo'], ['t', 'ÚDER, KOP, KIAI a ♪ špeciál'],
+    ['h', 'MENU vľavo hore'], ['t', 'pauza: POKRAČOVAŤ alebo návrat do menu'],
+    ['t', 'Špeciálne údery a kombá: menu OVLÁDANIE A ÚDERY.'] ] },
+  { title: 'HRA AKO APLIKÁCIA V MOBILE', rows: [
+    ['t', 'Otvor v prehliadači: peho-test.github.io/matusko-kombat'],
+    ['h', 'Android (Chrome)'], ['t', 'Menu ⋮ (tri bodky) vpravo hore → Pridať na plochu / Inštalovať'],
+    ['h', 'iPhone (Safari)'], ['t', 'Zdieľať → Pridať na plochu'],
+    ['t', 'Ikona hry sa objaví na ploche. Keď sa hra raz celá načíta,'],
+    ['t', 'ide aj bez internetu (okrem hry cez sieť).'],
+    ['t', 'Zavretie: tlačidlo Domov telefónu (v aplikácii aj menu AKO ODÍSŤ).'] ] },
+];
+const NAVOD_BACK = { x: 6, y: 6, w: 64, h: 18 };
+function updateNavod() {
+  if (sceneT === 1) game.navodPage = 0;
+  const n = NAVOD.length, pg = game.navodPage || 0, ready = sceneT > 10;
+  const back = () => { sfx('confirm'); setScene('title'); };
+  const go = d => { game.navodPage = clamp(pg + d, 0, n - 1); sfx('select'); };
+  if (menu.tapPos) {                       // ťuk: SPÄŤ vľavo hore, ľavý okraj = predošlá strana, inde = ďalšia (na poslednej späť do menu)
+    const t = menu.tapPos, B = NAVOD_BACK;
+    if (!ready) return;
+    if (t.x >= B.x && t.x <= B.x + B.w && t.y >= B.y && t.y <= B.y + B.h) back();
+    else if (t.x < 110 && pg > 0) go(-1);
+    else if (pg < n - 1) go(1); else back();
+    return;
+  }
+  if (menu.left && pg > 0) go(-1);
+  else if (menu.right && pg < n - 1) go(1);
+  else if (menu.back && ready) back();
+  else if (menu.ok && ready) { if (pg < n - 1) go(1); else back(); }
+}
+function drawNavod() {
+  ctx.fillStyle = '#0b0b14'; ctx.fillRect(0, 0, W, H);
+  const n = NAVOD.length, page = Math.min(game.navodPage || 0, n - 1), pg = NAVOD[page];
+  bigText(pg.title, W / 2, 34, 18);
+  let y = 58;
+  for (const [kind, t] of pg.rows) {
+    if (kind === 'h') { y += 3; text(t, 36, y, 10, 'left', '#ffd200'); y += 14; }
+    else { text(t, 44, y, 9, 'left', '#ffffff'); y += 14; }
+  }
+  const B = NAVOD_BACK;
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(B.x, B.y, B.w, B.h);
+  text('◀ SPÄŤ', B.x + B.w / 2, B.y + 13, 9, 'center', '#dddddd');
+  text(`◀ ▶  strana ${page + 1}/${n}`, W / 2, 240, 9, 'center', '#ffd200');
+  text(localKind() === 'touch' ? 'ťuk = ďalšia strana    ťuk vľavo = predošlá    ◀ SPÄŤ = menu'
+    : '← → strany    Enter = ďalej    Esc = späť do menu', W / 2, 256, 8, 'center', '#aaaaaa');
 }
 const SEL = { pw: 96, ph: 120, gap: 24, y: 50, cols: 1, rows: 1, rowH: 0 };
 function selectFit() {                     // viac bojovníkov = menšie portréty; od 7 políčok (s ???) dva riadky
@@ -1996,6 +2067,7 @@ function update() {
   switch (scene) {
     case 'title': updateTitle(); break;
     case 'controls': updateControls(); break;
+    case 'navod': updateNavod(); break;
     case 'select': updateSelect(); break;
     case 'vs': updateVS(); break;
     case 'fight': updateFight(); break;
@@ -2015,6 +2087,7 @@ function draw() {
     case 'loading': drawLoading(); break;
     case 'title': drawTitle(); break;
     case 'controls': drawControls(); break;
+    case 'navod': drawNavod(); break;
     case 'select': drawSelect(); break;
     case 'vs': drawVS(); break;
     case 'fight': drawFight(); break;
