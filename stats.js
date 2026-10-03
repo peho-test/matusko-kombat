@@ -27,10 +27,25 @@
     const inc = (o, k) => { o[k] = (o[k] || 0) + 1; };
     const seen = new Set();                    // každý zápas a kolo sa zapíše raz (aj keď stav prichádza zo siete)
 
+    // ---------------------------------------------------------------- anonymné počítadlo hrania (Peťo 3. 10., variant B)
+    // GoatCounter pixel: posiela len názov udalosti, žiadne ID, cookies ani localStorage. Bez kódu stránky nerobí nič.
+    // Posiela len hostiteľ alebo hra na jednom zariadení (zápas cez sieť = jedna udalosť). Chyba alebo offline = nič (fail-open).
+    // Automatizované prehliadače (testy) nepočítajú nikdy, okrem test_pocitadlo.js s window.MK_POCITADLO a zachytenými požiadavkami.
+    const POCITADLO = 'holpeto';               // verejný kód stránky GoatCounter od Peťa (3. 10.), nie heslo; prázdne = vypnuté
+    const pocitane = new Set();
+    function pocitaj(udalost) {
+      const kod = window.MK_POCITADLO !== undefined ? window.MK_POCITADLO : (navigator.webdriver ? '' : POCITADLO);
+      if (!kod || !/^[a-z0-9-]+$/.test(kod) || (api.NET && api.NET.role === 'guest')) return;
+      try {
+        const img = new Image(); img.referrerPolicy = 'no-referrer';
+        img.src = `https://${kod}.goatcounter.com/count?p=${encodeURIComponent(udalost)}&e=true&rnd=${Math.random().toString(36).slice(2, 8)}`;
+      } catch (e) { /* počítadlo nesmie nikdy zastaviť hru */ }
+    }
+
     function recordMatch(F) {
       const w = F.fighters[F.winner], l = F.fighters[1 - F.winner];
       if (!w || !l) return;
-      S.matches++; inc(S.wins, w.id);
+      S.matches++; inc(S.wins, w.id); pocitaj('zapas-koniec');
       const kr = F.statId + ':r' + F.round;                   // posledné kolo cez FINISH HIM nejde cez roundEnd
       if (!seen.has(kr)) { seen.add(kr); if (w.damageTaken === 0) inc(S.flawless, w.id); }
       if (F.finisher) inc(S.finishers, F.finisher);
@@ -53,6 +68,8 @@
     api.hooks.matchStart.push(F => { if (!(api.NET && api.NET.role === 'guest')) F.statId = Math.random().toString(36).slice(2, 10); });
     api.hooks.frame.push(() => {               // beží aj u sieťového hosťa: zapisuje zo stavu, ktorý príde od hostiteľa
       const F = api.fight;
+      if (!pocitane.has('otvorena') && api.scene === 'title') { pocitane.add('otvorena'); pocitaj('hra-otvorena'); }
+      if (F && F.statId && F.phase === 'fight' && !pocitane.has(F.statId + ':s')) { pocitane.add(F.statId + ':s'); pocitaj(F.trening ? 'trening' : 'zapas-zaciatok'); }
       if (!F || !F.statId || !F.fighters || F.trening) return;          // TRÉNING (trening.js) sa do SIENE SLÁVY nezapisuje
       if (F.phase === 'roundEnd' && F.roundWinner >= 0) {
         const k = F.statId + ':r' + F.round;
