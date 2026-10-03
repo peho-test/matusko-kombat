@@ -1545,7 +1545,7 @@ function drawFight() {
       ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(m.x, m.y, m.w, m.h);
       text('MENU', W / 2, m.y + 14, 10, 'center', '#ddd');
       text('alebo ▶ HRAŤ vľavo hore', W / 2, 146, 8, 'center', '#bbb');   // dotykové tlačidlo má v pauze tento nápis
-      if (INSTALLED_TOUCH) text('Odísť z hry: potiahni prstom od spodného okraja nahor' + (installMode() === 'fullscreen' ? ' (2×)' : ''), W / 2, 240, 8, 'center', '#bbb');
+      if (INSTALLED_TOUCH) text(installMode() === 'fullscreen' ? 'Odísť z hry: potiahni od okraja obrazovky a stlač ○ DOMOV telefónu' : 'Odísť z hry: okrúhle tlačidlo ○ DOMOV telefónu na okraji obrazovky', W / 2, 240, 8, 'center', '#bbb');
     }
     else text('ESC = pokračovať    Q = koniec    H = hudba    M = všetok zvuk', W / 2, 150, 10, 'center');
   }
@@ -1653,19 +1653,30 @@ function drawTitle() {
   if (game.exitHelp) drawExitHelp();
 }
 function drawExitHelp() {                  // pravdivý postup: stránka nainštalovanú hru zavrieť nevie, robí to telefón (žiadne falošné EXIT)
+  // Peťov S25 (3. 10., screenshot po novej inštalácii): na šírku tri tlačidlá Androidu ‹ ○ ||| na bočnom okraji, gesto zdola tam nič nerobí
   const full = installMode() === 'fullscreen';
   ctx.fillStyle = '#07060a'; ctx.fillRect(0, 0, W, H);                 // nepriehľadné: menu pod návodom nepresvitá
-  bigText('AKO ODÍSŤ Z HRY', W / 2, 46, 24);
+  bigText('AKO ODÍSŤ Z HRY', 200, 40, 22);
   const rows = [
-    ['Hra sa zatvára ako každá aplikácia v telefóne:', '#ffffff'],
-    ['potiahni prstom od SPODNÉHO OKRAJA obrazovky nahor.', '#ffd200'],
-    full ? ['Prvé potiahnutie ukáže lištu telefónu, druhé ťa vráti na plochu.', '#ffffff']
-         : ['Telefón ťa vráti na plochu.', '#ffffff'],
-    ['Ak máš dole tri tlačidlá: ťukni na Domov (stredné).', '#ffffff'],
+    ['Hru zatvára telefón, tlačidlo v hre na to nie je.', '#ffffff'],
+    ['Stlač okrúhle tlačidlo ○ DOMOV telefónu.', '#ffd200'],
+    ['Je na okraji obrazovky v strede, medzi ‹ a |||', '#ffffff'],
+    ['(keď držíš telefón na šírku, býva vpravo).', '#ffffff'],
+    full ? ['Tlačidlá ukážeš potiahnutím prstom od okraja dovnútra.', '#cfe6ff']
+         : ['Telefón bez tlačidiel (gestá): potiahni prstom zdola nahor.', '#cfe6ff'],
     ['Postup aj objavené zakončenia ostávajú uložené.', '#9fffb0'],
   ];
-  rows.forEach(([t, c], i) => text(t, W / 2, 86 + i * 22, 10, 'center', c));
-  text(full ? 'režim: celá obrazovka (staršia inštalácia ikony)' : 'režim: aplikácia so systémovou lištou', W / 2, 206, 8, 'center', '#8f8676');
+  rows.forEach(([t, c], i) => text(t, 200, 72 + i * 20, 10, 'center', c));
+  const bx = 418, by = 66, bw = 34, bh = 132, cx = bx + bw / 2, cy = by + bh / 2;   // obrázok lišty telefónu: ‹ hore, ○ v strede, ||| dole
+  ctx.fillStyle = '#000'; ctx.fillRect(bx, by, bw, bh); ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+  text('‹', cx, by + 28, 18, 'center', '#dddddd');
+  ctx.strokeStyle = '#ffd200'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.stroke();
+  text('|||', cx, by + bh - 14, 11, 'center', '#dddddd');
+  ctx.strokeStyle = '#ffd200'; ctx.fillStyle = '#ffd200'; ctx.lineWidth = 3;          // šípka na ○
+  ctx.beginPath(); ctx.moveTo(bx - 30, cy); ctx.lineTo(bx - 12, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx - 5, cy); ctx.lineTo(bx - 14, cy - 6); ctx.lineTo(bx - 14, cy + 6); ctx.closePath(); ctx.fill();
+  text('DOMOV', cx, by + bh + 13, 8, 'center', '#ffd200');
+  text(full ? 'režim: celá obrazovka (staršia inštalácia ikony)' : 'režim: aplikácia so systémovou lištou', 200, 206, 8, 'center', '#8f8676');
   ctx.fillStyle = 'rgba(255,210,0,0.28)'; ctx.fillRect(W / 2 - 40, 222, 80, 24); ctx.strokeStyle = '#ffd200'; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - 40, 222, 80, 24);
   text('OK', W / 2, 239, 12, 'center', '#fff');
 }
