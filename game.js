@@ -48,6 +48,16 @@ let RES = 1;
 // Peťo 2. 10. večer: celá grafika jednotne pixelová ako MK2 (postavy, bábätká, arény, texty); na veľkom PC jemnejšie 2× pixely, nie hladké HD.
 // ?smooth=1 = predošlý hladký vzhľad (porovnanie / návrat)
 const PIXEL = !/[?&]smooth=1/.test(location.search);
+// nainštalovaná hra na mobile (Peťo 3. 10.: „nedokážem odísť, nie je tam žiadny exit“): web ju nevie zavrieť, preto menu AKO ODÍSŤ
+// so systémovým postupom; ?installed=fullscreen|standalone len pre testy
+function installMode() {
+  const q = (location.search.match(/[?&]installed=(fullscreen|standalone)/) || [])[1]; if (q) return q;
+  if (typeof matchMedia !== 'function') return null;
+  if (matchMedia('(display-mode: fullscreen)').matches) return 'fullscreen';
+  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return 'standalone';
+  return null;
+}
+const INSTALLED_TOUCH = !!installMode() && (/[?&]installed=/.test(location.search) || matchMedia('(pointer: coarse)').matches);
 function fitRes() {
   const forced = +(new URLSearchParams(location.search).get('res') || window.MK_RES || 0);
   const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -1535,6 +1545,7 @@ function drawFight() {
       ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(m.x, m.y, m.w, m.h);
       text('MENU', W / 2, m.y + 14, 10, 'center', '#ddd');
       text('alebo ▶ HRAŤ vľavo hore', W / 2, 146, 8, 'center', '#bbb');   // dotykové tlačidlo má v pauze tento nápis
+      if (INSTALLED_TOUCH) text('Odísť z hry: potiahni prstom od spodného okraja nahor' + (installMode() === 'fullscreen' ? ' (2×)' : ''), W / 2, 240, 8, 'center', '#bbb');
     }
     else text('ESC = pokračovať    Q = koniec    H = hudba    M = všetok zvuk', W / 2, 150, 10, 'center');
   }
@@ -1562,6 +1573,10 @@ function menuLayout() {                  // pri 6+ položkách sa znak a nápis 
   return { y0: n > 4 ? 196 : 202, step: n > 4 ? Math.max(10, Math.floor(60 / n)) : 15 };
 }
 function updateTitle() {
+  if (game.exitHelp) {
+    if ((menu.ok || menu.back || menu.tapPos) && frameNo - game.exitHelp > 15) { game.exitHelp = 0; sfx('select'); }
+    return;
+  }
   const n = MENU.length, L = menuLayout();
   const cur = curMenu(), m = cur.length, y0 = menuItemsY0();
   if (menu.tapPos) {
@@ -1600,6 +1615,7 @@ function groupMenu() {                    // po načítaní modulov: položky hi
   MENU.unshift({ label: 'SINGLE PLAYER', sub: 'single', act() { openSubmenu('single'); } });
   const ov = MENU.find(it => it.label === 'OVLÁDANIE');
   if (ov) { ov.label = 'OVLÁDANIE A ÚDERY'; ov.hint = 'Klávesy, ovládač, mobil, špeciálne údery a schopnosti postáv'; }   // Peťo: špeciálne údery hneď nenašiel
+  if (INSTALLED_TOUCH) MENU.push({ label: 'AKO ODÍSŤ', hint: 'Ako zavrieť hru v telefóne', act() { game.exitHelp = frameNo; } });
   game.menuIdx = 0;
 }
 // blahoželanie len týždeň pred a týždeň po Matúšových narodeninách (3. 10. → 26. 9.–10. 10., Peťo), každý rok so správnym vekom;
@@ -1634,6 +1650,24 @@ function drawTitle() {
   else if (hint) text(hint, W / 2, 264, 9, 'center', '#cfe6ff');
   else if (bd && sceneT % 60 < 40) text(`Všetko najlepšie k ${bd.age}. narodeninám, Matúško!`, W / 2, 264, 9, 'center', '#ffb3b3');
   if (window.MK_BUILD) text(String(window.MK_BUILD), 4, 266, 6, 'left', '#6c6576');      // číslo verzie (web: build_web.py), aby sa dalo skontrolovať, či mobil nemá starú
+  if (game.exitHelp) drawExitHelp();
+}
+function drawExitHelp() {                  // pravdivý postup: stránka nainštalovanú hru zavrieť nevie, robí to telefón (žiadne falošné EXIT)
+  const full = installMode() === 'fullscreen';
+  ctx.fillStyle = '#07060a'; ctx.fillRect(0, 0, W, H);                 // nepriehľadné: menu pod návodom nepresvitá
+  bigText('AKO ODÍSŤ Z HRY', W / 2, 46, 24);
+  const rows = [
+    ['Hra sa zatvára ako každá aplikácia v telefóne:', '#ffffff'],
+    ['potiahni prstom od SPODNÉHO OKRAJA obrazovky nahor.', '#ffd200'],
+    full ? ['Prvé potiahnutie ukáže lištu telefónu, druhé ťa vráti na plochu.', '#ffffff']
+         : ['Telefón ťa vráti na plochu.', '#ffffff'],
+    ['Ak máš dole tri tlačidlá: ťukni na Domov (stredné).', '#ffffff'],
+    ['Postup aj objavené zakončenia ostávajú uložené.', '#9fffb0'],
+  ];
+  rows.forEach(([t, c], i) => text(t, W / 2, 86 + i * 22, 10, 'center', c));
+  text(full ? 'režim: celá obrazovka (staršia inštalácia ikony)' : 'režim: aplikácia so systémovou lištou', W / 2, 206, 8, 'center', '#8f8676');
+  ctx.fillStyle = 'rgba(255,210,0,0.28)'; ctx.fillRect(W / 2 - 40, 222, 80, 24); ctx.strokeStyle = '#ffd200'; ctx.lineWidth = 2; ctx.strokeRect(W / 2 - 40, 222, 80, 24);
+  text('OK', W / 2, 239, 12, 'center', '#fff');
 }
 function controlPages() {                  // 1. strana základ, ďalšie z pomocníkov modulov ([pohyb, P1, P2, PS, dotyk])
   const pages = [{ title: 'OVLÁDANIE' }];
