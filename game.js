@@ -58,7 +58,21 @@ function installMode() {
   return null;
 }
 const INSTALLED_TOUCH = !!installMode() && (/[?&]installed=/.test(location.search) || matchMedia('(pointer: coarse)').matches);
+// Poistka proti orezaniu (Peťo 3. 10., nainštalovaná hra na S25: po spustení bolo plátno chvíľu vyššie ako viditeľná plocha, spodok menu chýbal).
+// Kým plátno sedí, rozmery robí CSS (dvh). Keď vytŕča z viditeľnej plochy, odvtedy sa rozmery počítajú z nej.
+let boxFix = false;
+function fitBox() {
+  const vv = window.visualViewport, vok = vv && Math.abs((vv.scale || 1) - 1) < 0.01, de = document.documentElement;
+  const vw = Math.min(innerWidth || 1e9, vok ? vv.width : 1e9, de.clientWidth || 1e9);
+  const vh = Math.min(innerHeight || 1e9, vok ? vv.height : 1e9, de.clientHeight || 1e9);
+  if (!(vw > 50 && vh > 50 && vw < 1e8 && vh < 1e8)) return;
+  if (!boxFix) { const r = cv.getBoundingClientRect(); if (r.bottom <= vh + 2 && r.right <= vw + 2 && r.top >= -2 && r.left >= -2) return; boxFix = true; }
+  de.style.height = document.body.style.height = Math.floor(vh) + 'px';
+  const w = Math.floor(Math.min(vw, vh * 16 / 9));
+  if (cv.style.width !== w + 'px') { cv.style.width = w + 'px'; cv.style.height = Math.floor(w * 9 / 16) + 'px'; }
+}
 function fitRes() {
+  fitBox();
   const forced = +(new URLSearchParams(location.search).get('res') || window.MK_RES || 0);
   const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   const cap = matchMedia('(pointer: coarse)').matches ? (PIXEL ? 1 : 2) : (PIXEL ? 2 : 3);   // mobil 1× pixely, PC 2× pixely
@@ -67,6 +81,7 @@ function fitRes() {
 }
 addEventListener('resize', () => fitRes());
 if (window.visualViewport) visualViewport.addEventListener('resize', () => fitRes());   // lišta prehliadača sa ukáže / skryje
+addEventListener('orientationchange', () => setTimeout(fitRes, 300));                     // po otočení sa rozloženie ustáli neskôr
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -1962,6 +1977,7 @@ function drawLoading() {
 // ===================================================================== hlavná slučka
 function update() {
   frameNo++;
+  if (frameNo % 30 === 0) fitBox();                    // poistka proti orezaniu: dvakrát za sekundu
   syncTouch();
   if (scene !== 'fight') pauseStageVideos();
   if (NET.role === 'guest') {                           // sieťový hosť: len vstup + odoslanie, stav príde od hostiteľa
